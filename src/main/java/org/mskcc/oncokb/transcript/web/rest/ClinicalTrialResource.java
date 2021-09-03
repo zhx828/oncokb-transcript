@@ -5,6 +5,8 @@ import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import org.mskcc.oncokb.transcript.domain.ClinicalTrial;
 import org.mskcc.oncokb.transcript.repository.ClinicalTrialRepository;
 import org.mskcc.oncokb.transcript.service.ClinicalTrialService;
@@ -48,7 +50,7 @@ public class ClinicalTrialResource {
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("/clinical-trials")
-    public ResponseEntity<ClinicalTrial> createClinicalTrial(@RequestBody ClinicalTrial clinicalTrial) throws URISyntaxException {
+    public ResponseEntity<ClinicalTrial> createClinicalTrial(@Valid @RequestBody ClinicalTrial clinicalTrial) throws URISyntaxException {
         log.debug("REST request to save ClinicalTrial : {}", clinicalTrial);
         if (clinicalTrial.getId() != null) {
             throw new BadRequestAlertException("A new clinicalTrial cannot already have an ID", ENTITY_NAME, "idexists");
@@ -73,7 +75,7 @@ public class ClinicalTrialResource {
     @PutMapping("/clinical-trials/{id}")
     public ResponseEntity<ClinicalTrial> updateClinicalTrial(
         @PathVariable(value = "id", required = false) final Long id,
-        @RequestBody ClinicalTrial clinicalTrial
+        @Valid @RequestBody ClinicalTrial clinicalTrial
     ) throws URISyntaxException {
         log.debug("REST request to update ClinicalTrial : {}, {}", id, clinicalTrial);
         if (clinicalTrial.getId() == null) {
@@ -108,7 +110,7 @@ public class ClinicalTrialResource {
     @PatchMapping(value = "/clinical-trials/{id}", consumes = "application/merge-patch+json")
     public ResponseEntity<ClinicalTrial> partialUpdateClinicalTrial(
         @PathVariable(value = "id", required = false) final Long id,
-        @RequestBody ClinicalTrial clinicalTrial
+        @NotNull @RequestBody ClinicalTrial clinicalTrial
     ) throws URISyntaxException {
         log.debug("REST request to partial update ClinicalTrial partially : {}, {}", id, clinicalTrial);
         if (clinicalTrial.getId() == null) {

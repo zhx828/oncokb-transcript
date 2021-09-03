@@ -3,7 +3,8 @@
   "fields": [
     {
       "fieldName": "nctId",
-      "fieldType": "String"
+      "fieldType": "String",
+      "fieldValidateRules": ["unique"]
     },
     {
       "fieldName": "phase",

@@ -15,7 +15,7 @@
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="nct_id" type="varchar(255)">
-                <constraints nullable="true" />
+                <constraints nullable="true" unique="true" uniqueConstraintName="ux_clinical_trial__nct_id" />
             </column>
             <column name="phase" type="varchar(255)">
                 <constraints nullable="true" />

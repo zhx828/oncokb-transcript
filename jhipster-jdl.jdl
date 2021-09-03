@@ -81,7 +81,7 @@ entity Aact {
 }
 
 entity ClinicalTrial {
-	nctId String
+	nctId String unique
 	phase String
 	status String
     briefTitle TextBlob

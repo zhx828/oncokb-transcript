@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import javax.persistence.*;
+import javax.validation.constraints.*;
 
 /**
  * A ClinicalTrial.
@@ -20,7 +21,7 @@ public class ClinicalTrial implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "nct_id")
+    @Column(name = "nct_id", unique = true)
     private String nctId;
 
     @Column(name = "phase")
