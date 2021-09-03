@@ -1,8 +1,5 @@
 package org.mskcc.oncokb.transcript.service;
 
-import static org.mskcc.oncokb.transcript.config.Constants.SITE_AACT_QUERY_SEPARATOR;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.mskcc.oncokb.transcript.domain.Site;
@@ -51,8 +48,8 @@ public class SiteService {
             .findById(site.getId())
             .map(
                 existingSite -> {
-                    if (site.getAddress() != null) {
-                        existingSite.setAddress(site.getAddress());
+                    if (site.getName() != null) {
+                        existingSite.setName(site.getName());
                     }
                     if (site.getCity() != null) {
                         existingSite.setCity(site.getCity());
@@ -60,11 +57,11 @@ public class SiteService {
                     if (site.getCountry() != null) {
                         existingSite.setCountry(site.getCountry());
                     }
-                    if (site.getName() != null) {
-                        existingSite.setName(site.getName());
-                    }
                     if (site.getState() != null) {
                         existingSite.setState(site.getState());
+                    }
+                    if (site.getAddress() != null) {
+                        existingSite.setAddress(site.getAddress());
                     }
                     if (site.getCoordinates() != null) {
                         existingSite.setCoordinates(site.getCoordinates());
