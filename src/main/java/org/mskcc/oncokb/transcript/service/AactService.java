@@ -168,7 +168,7 @@ public class AactService {
 
         Set<String> filteredTerms = meshTerms.stream().filter(meshTerm -> meshTerm.contains(",")).collect(Collectors.toSet());
         // Step 2 - Get a list of NCT IDs from browse_conditions where mesh_term comes from the step 1
-        Set<String> nctIds = getNctIdsByMeshTerms(filteredTerms);
+        Set<String> nctIds = getNctIdsByMeshTerms(filteredTerms).stream().limit(100).collect(Collectors.toSet());
 
         // Step 3 - Get the trials using the list above
         nctIds = getTrials(nctIds);
@@ -186,7 +186,7 @@ public class AactService {
         */
 
         // Step 5 - Get sites
-        getSites(new HashSet<>(this.clinicalTrialService.findAllNctIds()));
+        getSites(nctIds);
         // Step 6 - Update info table
     }
 
@@ -298,7 +298,7 @@ public class AactService {
 
     private void getSites(Set<String> nctIds) throws Exception {
         // Backfill sites info if the coordinates is empty. The data may have been updated in the database so that the coordinates can be filled after querying the Google Map
-        updateCityLevelSitesWithEmptyCoordinates();
+        //        updateCityLevelSitesWithEmptyCoordinates();
 
         // Include new city level sites
         saveCityLevelSites(nctIds);
@@ -357,24 +357,41 @@ public class AactService {
         if (pickedResult.isPresent()) {
             Optional<AddressComponent> countryAddressComponent = getByAddressComponentType(
                 pickedResult.get(),
-                AddressComponentType.ADMINISTRATIVE_AREA_LEVEL_1
+                AddressComponentType.COUNTRY
             );
             if (countryAddressComponent.isPresent()) {
                 site.setCountry(countryAddressComponent.get().longName);
             }
             Optional<AddressComponent> stateAddressComponent = getByAddressComponentType(
                 pickedResult.get(),
-                AddressComponentType.ADMINISTRATIVE_AREA_LEVEL_2
+                AddressComponentType.ADMINISTRATIVE_AREA_LEVEL_1
             );
             if (stateAddressComponent.isPresent()) {
-                site.setCountry(stateAddressComponent.get().longName);
+                site.setState(stateAddressComponent.get().longName);
             }
-            Optional<AddressComponent> cityAddressComponent = getByAddressComponentType(
+            List<Optional<AddressComponent>> cityRelevantComponents = new ArrayList<>();
+            Optional<AddressComponent> locality = getByAddressComponentType(pickedResult.get(), AddressComponentType.LOCALITY);
+            cityRelevantComponents.add(locality);
+
+            Optional<AddressComponent> aal2 = getByAddressComponentType(
+                pickedResult.get(),
+                AddressComponentType.ADMINISTRATIVE_AREA_LEVEL_2
+            );
+            cityRelevantComponents.add(aal2);
+
+            Optional<AddressComponent> aal3 = getByAddressComponentType(
                 pickedResult.get(),
                 AddressComponentType.ADMINISTRATIVE_AREA_LEVEL_3
             );
-            if (cityAddressComponent.isPresent()) {
-                site.setCountry(cityAddressComponent.get().longName);
+            cityRelevantComponents.add(aal3);
+
+            Optional<AddressComponent> mostAccurateCityComponent = cityRelevantComponents
+                .stream()
+                .filter(item -> item.isPresent())
+                .map(Optional::get)
+                .findFirst();
+            if (mostAccurateCityComponent.isPresent()) {
+                site.setCity(mostAccurateCityComponent.get().longName);
             }
             site.setAddress(pickedResult.get().formattedAddress);
 
@@ -536,12 +553,12 @@ public class AactService {
         throws IOException, InterruptedException, ApiException {
         List<String> queryParams = new ArrayList<>();
         queryParams.add(name);
-        queryParams.add(city);
-        queryParams.add(state);
+        queryParams.add(cleanUpCity(city));
+        queryParams.add(cleanUpState(state));
         return GeocodingApi
             .newRequest(geoApiContext)
             .address(String.join(",", queryParams.stream().filter(param -> StringUtil.isNotEmpty(param)).collect(Collectors.toList())))
-            .components(ComponentFilter.country(country))
+            .components(ComponentFilter.country(cleanUpCountry(country)))
             .await();
     }
 
