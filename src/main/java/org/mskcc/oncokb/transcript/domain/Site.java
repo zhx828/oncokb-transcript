@@ -21,12 +21,8 @@ public class Site implements Serializable {
     private Long id;
 
     @NotNull
-    @Column(name = "aact_query", nullable = false, unique = true)
-    private String aactQuery = "";
-
-    @NotNull
-    @Column(name = "address", nullable = false)
-    private String address = "";
+    @Column(name = "name", nullable = false)
+    private String name = "";
 
     @NotNull
     @Column(name = "city", nullable = false)
@@ -37,12 +33,12 @@ public class Site implements Serializable {
     private String country = "";
 
     @NotNull
-    @Column(name = "name", nullable = false)
-    private String name = "";
-
-    @NotNull
     @Column(name = "state", nullable = false)
     private String state = "";
+
+    @NotNull
+    @Column(name = "address", nullable = false)
+    private String address = "";
 
     @NotNull
     @Column(name = "coordinates", nullable = false)
@@ -51,6 +47,10 @@ public class Site implements Serializable {
     @Lob
     @Column(name = "google_map_result", nullable = false)
     private String googleMapResult = "";
+
+    @OneToMany(mappedBy = "site")
+    @JsonIgnoreProperties(value = { "site" }, allowSetters = true)
+    private Set<Aact> aacts = new HashSet<>();
 
     @ManyToMany(mappedBy = "sites")
     @JsonIgnoreProperties(value = { "sites", "arms" }, allowSetters = true)
@@ -70,30 +70,17 @@ public class Site implements Serializable {
         return this;
     }
 
-    public String getAactQuery() {
-        return this.aactQuery;
+    public String getName() {
+        return this.name;
     }
 
-    public Site aactQuery(String aactQuery) {
-        this.aactQuery = aactQuery;
+    public Site name(String name) {
+        this.name = name;
         return this;
     }
 
-    public void setAactQuery(String aactQuery) {
-        this.aactQuery = aactQuery;
-    }
-
-    public String getAddress() {
-        return this.address;
-    }
-
-    public Site address(String address) {
-        this.address = address;
-        return this;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getCity() {
@@ -122,19 +109,6 @@ public class Site implements Serializable {
         this.country = country;
     }
 
-    public String getName() {
-        return this.name;
-    }
-
-    public Site name(String name) {
-        this.name = name;
-        return this;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
     public String getState() {
         return this.state;
     }
@@ -146,6 +120,19 @@ public class Site implements Serializable {
 
     public void setState(String state) {
         this.state = state;
+    }
+
+    public String getAddress() {
+        return this.address;
+    }
+
+    public Site address(String address) {
+        this.address = address;
+        return this;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     public String getCoordinates() {
@@ -172,6 +159,37 @@ public class Site implements Serializable {
 
     public void setGoogleMapResult(String googleMapResult) {
         this.googleMapResult = googleMapResult;
+    }
+
+    public Set<Aact> getAacts() {
+        return this.aacts;
+    }
+
+    public Site aacts(Set<Aact> aacts) {
+        this.setAacts(aacts);
+        return this;
+    }
+
+    public Site addAact(Aact aact) {
+        this.aacts.add(aact);
+        aact.setSite(this);
+        return this;
+    }
+
+    public Site removeAact(Aact aact) {
+        this.aacts.remove(aact);
+        aact.setSite(null);
+        return this;
+    }
+
+    public void setAacts(Set<Aact> aacts) {
+        if (this.aacts != null) {
+            this.aacts.forEach(i -> i.setSite(null));
+        }
+        if (aacts != null) {
+            aacts.forEach(i -> i.setSite(this));
+        }
+        this.aacts = aacts;
     }
 
     public Set<ClinicalTrial> getClinicalTrials() {
@@ -229,12 +247,11 @@ public class Site implements Serializable {
     public String toString() {
         return "Site{" +
             "id=" + getId() +
-            ", aactQuery='" + getAactQuery() + "'" +
-            ", address='" + getAddress() + "'" +
+            ", name='" + getName() + "'" +
             ", city='" + getCity() + "'" +
             ", country='" + getCountry() + "'" +
-            ", name='" + getName() + "'" +
             ", state='" + getState() + "'" +
+            ", address='" + getAddress() + "'" +
             ", coordinates='" + getCoordinates() + "'" +
             ", googleMapResult='" + getGoogleMapResult() + "'" +
             "}";

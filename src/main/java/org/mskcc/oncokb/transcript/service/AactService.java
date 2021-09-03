@@ -16,21 +16,27 @@ import java.util.Date;
 import java.util.stream.Collectors;
 import javax.annotation.PreDestroy;
 import jodd.util.StringUtil;
-import org.mskcc.oncokb.transcript.OncokbTranscriptApp;
 import org.mskcc.oncokb.transcript.config.ApplicationProperties;
 import org.mskcc.oncokb.transcript.config.model.AactConfig;
+import org.mskcc.oncokb.transcript.domain.Aact;
 import org.mskcc.oncokb.transcript.domain.ClinicalTrial;
 import org.mskcc.oncokb.transcript.domain.Site;
+import org.mskcc.oncokb.transcript.repository.AactRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Service Implementation for managing {@link Aact}.
+ */
 @Service
+@Transactional
 public class AactService {
 
-    private static final Logger log = LoggerFactory.getLogger(OncokbTranscriptApp.class);
+    private final Logger log = LoggerFactory.getLogger(AactService.class);
 
+    private final AactRepository aactRepository;
     ApplicationProperties applicationProperties;
     SiteService siteService;
     ClinicalTrialService clinicalTrialService;
@@ -43,8 +49,13 @@ public class AactService {
 
     Map<String, String> locationCleanUpInCommon = new HashMap<>();
 
-    public AactService(ApplicationProperties applicationProperties, SiteService siteService, ClinicalTrialService clinicalTrialService)
-        throws Exception {
+    public AactService(
+        AactRepository aactRepository,
+        ApplicationProperties applicationProperties,
+        SiteService siteService,
+        ClinicalTrialService clinicalTrialService
+    ) {
+        this.aactRepository = aactRepository;
         this.applicationProperties = applicationProperties;
         this.siteService = siteService;
         this.clinicalTrialService = clinicalTrialService;
@@ -54,6 +65,82 @@ public class AactService {
         // add keywords that are common among city/state/country that need to be mapped to other values
         locationCleanUpInCommon.put("Please Select", "");
         locationCleanUpInCommon.put("Please Select An Option Below", "");
+    }
+
+    /**
+     * Save a aact.
+     *
+     * @param aact the entity to save.
+     * @return the persisted entity.
+     */
+    public Aact save(Aact aact) {
+        log.debug("Request to save Aact : {}", aact);
+        return aactRepository.save(aact);
+    }
+
+    /**
+     * Partially update a aact.
+     *
+     * @param aact the entity to update partially.
+     * @return the persisted entity.
+     */
+    public Optional<Aact> partialUpdate(Aact aact) {
+        log.debug("Request to partially update Aact : {}", aact);
+
+        return aactRepository
+            .findById(aact.getId())
+            .map(
+                existingAact -> {
+                    if (aact.getName() != null) {
+                        existingAact.setName(aact.getName());
+                    }
+                    if (aact.getCity() != null) {
+                        existingAact.setCity(aact.getCity());
+                    }
+                    if (aact.getCountry() != null) {
+                        existingAact.setCountry(aact.getCountry());
+                    }
+                    if (aact.getState() != null) {
+                        existingAact.setState(aact.getState());
+                    }
+
+                    return existingAact;
+                }
+            )
+            .map(aactRepository::save);
+    }
+
+    /**
+     * Get all the aacts.
+     *
+     * @return the list of entities.
+     */
+    @Transactional(readOnly = true)
+    public List<Aact> findAll() {
+        log.debug("Request to get all Aacts");
+        return aactRepository.findAll();
+    }
+
+    /**
+     * Get one aact by id.
+     *
+     * @param id the id of the entity.
+     * @return the entity.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Aact> findOne(Long id) {
+        log.debug("Request to get Aact : {}", id);
+        return aactRepository.findById(id);
+    }
+
+    /**
+     * Delete the aact by id.
+     *
+     * @param id the id of the entity.
+     */
+    public void delete(Long id) {
+        log.debug("Request to delete Aact : {}", id);
+        aactRepository.deleteById(id);
     }
 
     @PreDestroy
@@ -235,34 +322,22 @@ public class AactService {
             String state = Optional.ofNullable(resultSet.getString("state")).orElse("");
             String country = Optional.ofNullable(resultSet.getString("country")).orElse("");
 
-            Optional<Site> siteOptional = siteService.findOneByAactQuery("", city, state, country);
-            if (siteOptional.isEmpty()) {
-                Site site = new Site();
-                site.setAactQuery(siteService.generateAactQuery("", city, state, country));
-
-                country = cleanUpCountry(country);
-                state = cleanUpState(state);
-                city = cleanUpCity(city);
-
-                site.setCity(city);
-                site.setState(state);
-                site.setCountry(country);
+            List<Aact> existingAact = this.aactRepository.findAllByNameAndCityAndStateAndCountry("", city, state, country);
+            if (existingAact.isEmpty()) {
+                Aact aact = new Aact();
+                aact.setCity(city);
+                aact.setState(state);
+                aact.setCountry(country);
 
                 log.info("Querying google map for {}, {}, {}", city, state, country);
                 GeocodingResult[] mapResult = queryGoogleMapGeocoding("", city, state, country);
                 if (mapResult != null) {
-                    site.setGoogleMapResult(new Gson().toJson(mapResult));
-                    Optional<GeocodingResult> pickedResult = pickGeocoding(mapResult, country);
-                    if (pickedResult.isPresent()) {
-                        site.setCoordinates(
-                            getCoordinatesString(
-                                Optional.ofNullable(pickedResult.get().geometry.location.lat).orElse(null),
-                                Optional.ofNullable(pickedResult.get().geometry.location.lng).orElse(null)
-                            )
-                        );
-                    }
+                    Site site = getSiteFromGoogleMapResult(mapResult);
+                    aact.setSite(siteService.save(site));
+                } else {
+                    log.warn("\tNo google result returned");
                 }
-                siteService.save(site);
+                aactRepository.save(aact);
             }
         }
 
@@ -272,6 +347,45 @@ public class AactService {
         //        }
         resultSet.close();
         stm.close();
+    }
+
+    private Site getSiteFromGoogleMapResult(GeocodingResult[] mapResult) throws Exception {
+        Site site = new Site();
+        site.setGoogleMapResult(new Gson().toJson(mapResult));
+
+        Optional<GeocodingResult> pickedResult = pickGeocoding(mapResult);
+        if (pickedResult.isPresent()) {
+            Optional<AddressComponent> countryAddressComponent = getByAddressComponentType(
+                pickedResult.get(),
+                AddressComponentType.ADMINISTRATIVE_AREA_LEVEL_1
+            );
+            if (countryAddressComponent.isPresent()) {
+                site.setCountry(countryAddressComponent.get().longName);
+            }
+            Optional<AddressComponent> stateAddressComponent = getByAddressComponentType(
+                pickedResult.get(),
+                AddressComponentType.ADMINISTRATIVE_AREA_LEVEL_2
+            );
+            if (stateAddressComponent.isPresent()) {
+                site.setCountry(stateAddressComponent.get().longName);
+            }
+            Optional<AddressComponent> cityAddressComponent = getByAddressComponentType(
+                pickedResult.get(),
+                AddressComponentType.ADMINISTRATIVE_AREA_LEVEL_3
+            );
+            if (cityAddressComponent.isPresent()) {
+                site.setCountry(cityAddressComponent.get().longName);
+            }
+            site.setAddress(pickedResult.get().formattedAddress);
+
+            site.setCoordinates(
+                getCoordinatesString(
+                    Optional.ofNullable(pickedResult.get().geometry.location.lat).orElse(null),
+                    Optional.ofNullable(pickedResult.get().geometry.location.lng).orElse(null)
+                )
+            );
+        }
+        return site;
     }
 
     private String cleanUpCountry(String country) {
@@ -328,22 +442,29 @@ public class AactService {
             String state = Optional.ofNullable(resultSet.getString("state")).orElse("");
             String country = Optional.ofNullable(resultSet.getString("country")).orElse("");
 
-            Optional<Site> siteOptional = siteService.findOneByAactQuery(name, city, state, country);
-            if (siteOptional.isEmpty()) {
-                Optional<Site> citySiteOptional = siteService.findOneByAactQuery("", city, state, country);
-                if (citySiteOptional.isEmpty()) {
+            List<Aact> records = aactRepository.findAllByNameAndCityAndStateAndCountry(name, city, state, country);
+            if (records.isEmpty()) {
+                List<Aact> citySiteList = aactRepository.findAllByNameAndCityAndStateAndCountry("", city, state, country);
+                if (citySiteList.isEmpty()) {
                     log.warn("The site does not have a mapped city level site. The site is name: {}.", name);
                 } else {
-                    Site citySite = citySiteOptional.get();
+                    Aact cityAact = citySiteList.get(0);
+
                     Site site = new Site();
                     site.setName(name);
-                    site.setCity(citySite.getCity());
-                    site.setState(citySite.getState());
-                    site.setCountry(citySite.getCountry());
-                    site.setCoordinates(citySite.getCoordinates());
-                    site.setAactQuery(siteService.generateAactQuery(name, city, state, country));
+                    site.setCity(cityAact.getSite().getCity());
+                    site.setState(cityAact.getSite().getState());
+                    site.setCountry(cityAact.getSite().getCountry());
+                    site.setCoordinates(cityAact.getSite().getCoordinates());
+                    Site specificSite = siteService.save(site);
 
-                    siteService.save(site);
+                    Aact aact = new Aact();
+                    aact.setName(name);
+                    aact.setCity(city);
+                    aact.setState(state);
+                    aact.setCountry(country);
+                    aact.setSite(specificSite);
+                    aactRepository.save(aact);
                 }
             }
         }
@@ -358,7 +479,7 @@ public class AactService {
             GeocodingResult[] mapResult = queryGoogleMapGeocoding("", site.getCity(), site.getState(), site.getCountry());
             if (mapResult != null) {
                 site.setGoogleMapResult(new Gson().toJson(mapResult));
-                Optional<GeocodingResult> pickedResult = pickGeocoding(mapResult, site.getCountry());
+                Optional<GeocodingResult> pickedResult = pickGeocoding(mapResult);
                 if (pickedResult.isPresent()) {
                     site.setCoordinates(
                         getCoordinatesString(
@@ -387,14 +508,14 @@ public class AactService {
             String state = Optional.ofNullable(resultSet.getString("state")).orElse("");
             String country = Optional.ofNullable(resultSet.getString("country")).orElse("");
 
-            Optional<Site> siteOptional = siteService.findOneByAactQuery(name, city, state, country);
-            if (siteOptional.isEmpty()) {
-                log.warn("No site matched to result from AACT but it should {}.", nctId);
+            List<Aact> aactList = aactRepository.findAllByNameAndCityAndStateAndCountry(name, city, state, country);
+            if (aactList.isEmpty()) {
+                log.warn("No aact record matches to result from AACT but it should {}.", nctId);
             } else {
                 if (!nctSites.containsKey(nctId)) {
                     nctSites.put(nctId, new HashSet<>());
                 }
-                nctSites.get(nctId).add(siteOptional.get());
+                nctSites.get(nctId).add(aactList.get(0).getSite());
             }
         }
         resultSet.close();
@@ -426,37 +547,28 @@ public class AactService {
 
     /**
      * Pick GeocodingResult from the list passed in
+     *
      * @param result
-     * @param country
      * @return
      * @throws Exception
      */
-    private Optional<GeocodingResult> pickGeocoding(GeocodingResult[] result, String country) throws Exception {
-        if (StringUtil.isEmpty(country)) {
-            throw new Exception("country needs to be specified");
-        }
-        country = country.toLowerCase();
+    private Optional<GeocodingResult> pickGeocoding(GeocodingResult[] result) throws Exception {
         List<GeocodingResult> resultWithCoordinates = Arrays
             .stream(result)
             // no need to deal with the locations that geometry is not available
             .filter(item -> item.geometry != null && item.geometry.location != null)
             .collect(Collectors.toList());
-        for (GeocodingResult item : resultWithCoordinates) {
-            Optional<AddressComponent> countryComponent = Arrays
-                .stream(item.addressComponents)
-                .filter(
-                    addressComponent ->
-                        Arrays
-                            .stream(addressComponent.types)
-                            .anyMatch(addressComponentType -> addressComponentType.equals(AddressComponentType.COUNTRY))
-                )
-                .findFirst();
-            if (countryComponent.isPresent() && countryComponent.get().longName.equalsIgnoreCase(country)) {
-                return Optional.of(item);
-            }
-        }
-        log.warn("Cannot find the geocoding matching the country {}", country);
-        return Optional.empty();
+        return resultWithCoordinates.stream().findFirst();
+    }
+
+    private Optional<AddressComponent> getByAddressComponentType(
+        GeocodingResult geocodingResult,
+        AddressComponentType addressComponentType
+    ) {
+        return Arrays
+            .stream(geocodingResult.addressComponents)
+            .filter(addressComponent -> Arrays.stream(addressComponent.types).anyMatch(type -> type.equals(addressComponentType)))
+            .findFirst();
     }
 
     private void buildQuery(List<String> queryParams, String value) {

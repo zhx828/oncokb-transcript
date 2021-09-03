@@ -57,9 +57,10 @@
       "GeneAlias",
       "Arm",
       "Site",
-      "ClinicalTrial"
+      "ClinicalTrial",
+      "Aact"
     ],
-    "lastLiquibaseTimestamp": 1626725730000,
+    "lastLiquibaseTimestamp": 1630681864000,
     "devServerPort": 9060
   }
 }

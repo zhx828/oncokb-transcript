@@ -42,7 +42,7 @@ public class ClinicalTrial implements Serializable {
         joinColumns = @JoinColumn(name = "clinical_trial_id"),
         inverseJoinColumns = @JoinColumn(name = "site_id")
     )
-    @JsonIgnoreProperties(value = { "clinicalTrials" }, allowSetters = true)
+    @JsonIgnoreProperties(value = { "aacts", "clinicalTrials" }, allowSetters = true)
     private Set<Site> sites = new HashSet<>();
 
     @ManyToMany

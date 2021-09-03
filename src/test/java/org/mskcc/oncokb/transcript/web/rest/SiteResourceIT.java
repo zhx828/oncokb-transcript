@@ -34,11 +34,8 @@ import org.springframework.util.Base64Utils;
 @WithMockUser
 class SiteResourceIT {
 
-    private static final String DEFAULT_AACT_QUERY = "AAAAAAAAAA";
-    private static final String UPDATED_AACT_QUERY = "BBBBBBBBBB";
-
-    private static final String DEFAULT_ADDRESS = "AAAAAAAAAA";
-    private static final String UPDATED_ADDRESS = "BBBBBBBBBB";
+    private static final String DEFAULT_NAME = "AAAAAAAAAA";
+    private static final String UPDATED_NAME = "BBBBBBBBBB";
 
     private static final String DEFAULT_CITY = "AAAAAAAAAA";
     private static final String UPDATED_CITY = "BBBBBBBBBB";
@@ -46,11 +43,11 @@ class SiteResourceIT {
     private static final String DEFAULT_COUNTRY = "AAAAAAAAAA";
     private static final String UPDATED_COUNTRY = "BBBBBBBBBB";
 
-    private static final String DEFAULT_NAME = "AAAAAAAAAA";
-    private static final String UPDATED_NAME = "BBBBBBBBBB";
-
     private static final String DEFAULT_STATE = "AAAAAAAAAA";
     private static final String UPDATED_STATE = "BBBBBBBBBB";
+
+    private static final String DEFAULT_ADDRESS = "AAAAAAAAAA";
+    private static final String UPDATED_ADDRESS = "BBBBBBBBBB";
 
     private static final String DEFAULT_COORDINATES = "AAAAAAAAAA";
     private static final String UPDATED_COORDINATES = "BBBBBBBBBB";
@@ -83,12 +80,11 @@ class SiteResourceIT {
      */
     public static Site createEntity(EntityManager em) {
         Site site = new Site()
-            .aactQuery(DEFAULT_AACT_QUERY)
-            .address(DEFAULT_ADDRESS)
+            .name(DEFAULT_NAME)
             .city(DEFAULT_CITY)
             .country(DEFAULT_COUNTRY)
-            .name(DEFAULT_NAME)
             .state(DEFAULT_STATE)
+            .address(DEFAULT_ADDRESS)
             .coordinates(DEFAULT_COORDINATES)
             .googleMapResult(DEFAULT_GOOGLE_MAP_RESULT);
         return site;
@@ -102,12 +98,11 @@ class SiteResourceIT {
      */
     public static Site createUpdatedEntity(EntityManager em) {
         Site site = new Site()
-            .aactQuery(UPDATED_AACT_QUERY)
-            .address(UPDATED_ADDRESS)
+            .name(UPDATED_NAME)
             .city(UPDATED_CITY)
             .country(UPDATED_COUNTRY)
-            .name(UPDATED_NAME)
             .state(UPDATED_STATE)
+            .address(UPDATED_ADDRESS)
             .coordinates(UPDATED_COORDINATES)
             .googleMapResult(UPDATED_GOOGLE_MAP_RESULT);
         return site;
@@ -131,12 +126,11 @@ class SiteResourceIT {
         List<Site> siteList = siteRepository.findAll();
         assertThat(siteList).hasSize(databaseSizeBeforeCreate + 1);
         Site testSite = siteList.get(siteList.size() - 1);
-        assertThat(testSite.getAactQuery()).isEqualTo(DEFAULT_AACT_QUERY);
-        assertThat(testSite.getAddress()).isEqualTo(DEFAULT_ADDRESS);
+        assertThat(testSite.getName()).isEqualTo(DEFAULT_NAME);
         assertThat(testSite.getCity()).isEqualTo(DEFAULT_CITY);
         assertThat(testSite.getCountry()).isEqualTo(DEFAULT_COUNTRY);
-        assertThat(testSite.getName()).isEqualTo(DEFAULT_NAME);
         assertThat(testSite.getState()).isEqualTo(DEFAULT_STATE);
+        assertThat(testSite.getAddress()).isEqualTo(DEFAULT_ADDRESS);
         assertThat(testSite.getCoordinates()).isEqualTo(DEFAULT_COORDINATES);
         assertThat(testSite.getGoogleMapResult()).isEqualTo(DEFAULT_GOOGLE_MAP_RESULT);
     }
@@ -161,27 +155,10 @@ class SiteResourceIT {
 
     @Test
     @Transactional
-    void checkAactQueryIsRequired() throws Exception {
+    void checkNameIsRequired() throws Exception {
         int databaseSizeBeforeTest = siteRepository.findAll().size();
         // set the field null
-        site.setAactQuery(null);
-
-        // Create the Site, which fails.
-
-        restSiteMockMvc
-            .perform(post(ENTITY_API_URL).contentType(MediaType.APPLICATION_JSON).content(TestUtil.convertObjectToJsonBytes(site)))
-            .andExpect(status().isBadRequest());
-
-        List<Site> siteList = siteRepository.findAll();
-        assertThat(siteList).hasSize(databaseSizeBeforeTest);
-    }
-
-    @Test
-    @Transactional
-    void checkAddressIsRequired() throws Exception {
-        int databaseSizeBeforeTest = siteRepository.findAll().size();
-        // set the field null
-        site.setAddress(null);
+        site.setName(null);
 
         // Create the Site, which fails.
 
@@ -229,10 +206,10 @@ class SiteResourceIT {
 
     @Test
     @Transactional
-    void checkNameIsRequired() throws Exception {
+    void checkStateIsRequired() throws Exception {
         int databaseSizeBeforeTest = siteRepository.findAll().size();
         // set the field null
-        site.setName(null);
+        site.setState(null);
 
         // Create the Site, which fails.
 
@@ -246,10 +223,10 @@ class SiteResourceIT {
 
     @Test
     @Transactional
-    void checkStateIsRequired() throws Exception {
+    void checkAddressIsRequired() throws Exception {
         int databaseSizeBeforeTest = siteRepository.findAll().size();
         // set the field null
-        site.setState(null);
+        site.setAddress(null);
 
         // Create the Site, which fails.
 
@@ -290,12 +267,11 @@ class SiteResourceIT {
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(jsonPath("$.[*].id").value(hasItem(site.getId().intValue())))
-            .andExpect(jsonPath("$.[*].aactQuery").value(hasItem(DEFAULT_AACT_QUERY)))
-            .andExpect(jsonPath("$.[*].address").value(hasItem(DEFAULT_ADDRESS)))
+            .andExpect(jsonPath("$.[*].name").value(hasItem(DEFAULT_NAME)))
             .andExpect(jsonPath("$.[*].city").value(hasItem(DEFAULT_CITY)))
             .andExpect(jsonPath("$.[*].country").value(hasItem(DEFAULT_COUNTRY)))
-            .andExpect(jsonPath("$.[*].name").value(hasItem(DEFAULT_NAME)))
             .andExpect(jsonPath("$.[*].state").value(hasItem(DEFAULT_STATE)))
+            .andExpect(jsonPath("$.[*].address").value(hasItem(DEFAULT_ADDRESS)))
             .andExpect(jsonPath("$.[*].coordinates").value(hasItem(DEFAULT_COORDINATES)))
             .andExpect(jsonPath("$.[*].googleMapResult").value(hasItem(DEFAULT_GOOGLE_MAP_RESULT.toString())));
     }
@@ -312,12 +288,11 @@ class SiteResourceIT {
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(jsonPath("$.id").value(site.getId().intValue()))
-            .andExpect(jsonPath("$.aactQuery").value(DEFAULT_AACT_QUERY))
-            .andExpect(jsonPath("$.address").value(DEFAULT_ADDRESS))
+            .andExpect(jsonPath("$.name").value(DEFAULT_NAME))
             .andExpect(jsonPath("$.city").value(DEFAULT_CITY))
             .andExpect(jsonPath("$.country").value(DEFAULT_COUNTRY))
-            .andExpect(jsonPath("$.name").value(DEFAULT_NAME))
             .andExpect(jsonPath("$.state").value(DEFAULT_STATE))
+            .andExpect(jsonPath("$.address").value(DEFAULT_ADDRESS))
             .andExpect(jsonPath("$.coordinates").value(DEFAULT_COORDINATES))
             .andExpect(jsonPath("$.googleMapResult").value(DEFAULT_GOOGLE_MAP_RESULT.toString()));
     }
@@ -342,12 +317,11 @@ class SiteResourceIT {
         // Disconnect from session so that the updates on updatedSite are not directly saved in db
         em.detach(updatedSite);
         updatedSite
-            .aactQuery(UPDATED_AACT_QUERY)
-            .address(UPDATED_ADDRESS)
+            .name(UPDATED_NAME)
             .city(UPDATED_CITY)
             .country(UPDATED_COUNTRY)
-            .name(UPDATED_NAME)
             .state(UPDATED_STATE)
+            .address(UPDATED_ADDRESS)
             .coordinates(UPDATED_COORDINATES)
             .googleMapResult(UPDATED_GOOGLE_MAP_RESULT);
 
@@ -363,12 +337,11 @@ class SiteResourceIT {
         List<Site> siteList = siteRepository.findAll();
         assertThat(siteList).hasSize(databaseSizeBeforeUpdate);
         Site testSite = siteList.get(siteList.size() - 1);
-        assertThat(testSite.getAactQuery()).isEqualTo(UPDATED_AACT_QUERY);
-        assertThat(testSite.getAddress()).isEqualTo(UPDATED_ADDRESS);
+        assertThat(testSite.getName()).isEqualTo(UPDATED_NAME);
         assertThat(testSite.getCity()).isEqualTo(UPDATED_CITY);
         assertThat(testSite.getCountry()).isEqualTo(UPDATED_COUNTRY);
-        assertThat(testSite.getName()).isEqualTo(UPDATED_NAME);
         assertThat(testSite.getState()).isEqualTo(UPDATED_STATE);
+        assertThat(testSite.getAddress()).isEqualTo(UPDATED_ADDRESS);
         assertThat(testSite.getCoordinates()).isEqualTo(UPDATED_COORDINATES);
         assertThat(testSite.getGoogleMapResult()).isEqualTo(UPDATED_GOOGLE_MAP_RESULT);
     }
@@ -442,10 +415,9 @@ class SiteResourceIT {
         partialUpdatedSite.setId(site.getId());
 
         partialUpdatedSite
-            .address(UPDATED_ADDRESS)
             .city(UPDATED_CITY)
-            .name(UPDATED_NAME)
-            .state(UPDATED_STATE)
+            .country(UPDATED_COUNTRY)
+            .address(UPDATED_ADDRESS)
             .coordinates(UPDATED_COORDINATES)
             .googleMapResult(UPDATED_GOOGLE_MAP_RESULT);
 
@@ -461,12 +433,11 @@ class SiteResourceIT {
         List<Site> siteList = siteRepository.findAll();
         assertThat(siteList).hasSize(databaseSizeBeforeUpdate);
         Site testSite = siteList.get(siteList.size() - 1);
-        assertThat(testSite.getAactQuery()).isEqualTo(DEFAULT_AACT_QUERY);
-        assertThat(testSite.getAddress()).isEqualTo(UPDATED_ADDRESS);
+        assertThat(testSite.getName()).isEqualTo(DEFAULT_NAME);
         assertThat(testSite.getCity()).isEqualTo(UPDATED_CITY);
-        assertThat(testSite.getCountry()).isEqualTo(DEFAULT_COUNTRY);
-        assertThat(testSite.getName()).isEqualTo(UPDATED_NAME);
-        assertThat(testSite.getState()).isEqualTo(UPDATED_STATE);
+        assertThat(testSite.getCountry()).isEqualTo(UPDATED_COUNTRY);
+        assertThat(testSite.getState()).isEqualTo(DEFAULT_STATE);
+        assertThat(testSite.getAddress()).isEqualTo(UPDATED_ADDRESS);
         assertThat(testSite.getCoordinates()).isEqualTo(UPDATED_COORDINATES);
         assertThat(testSite.getGoogleMapResult()).isEqualTo(UPDATED_GOOGLE_MAP_RESULT);
     }
@@ -484,12 +455,11 @@ class SiteResourceIT {
         partialUpdatedSite.setId(site.getId());
 
         partialUpdatedSite
-            .aactQuery(UPDATED_AACT_QUERY)
-            .address(UPDATED_ADDRESS)
+            .name(UPDATED_NAME)
             .city(UPDATED_CITY)
             .country(UPDATED_COUNTRY)
-            .name(UPDATED_NAME)
             .state(UPDATED_STATE)
+            .address(UPDATED_ADDRESS)
             .coordinates(UPDATED_COORDINATES)
             .googleMapResult(UPDATED_GOOGLE_MAP_RESULT);
 
@@ -505,12 +475,11 @@ class SiteResourceIT {
         List<Site> siteList = siteRepository.findAll();
         assertThat(siteList).hasSize(databaseSizeBeforeUpdate);
         Site testSite = siteList.get(siteList.size() - 1);
-        assertThat(testSite.getAactQuery()).isEqualTo(UPDATED_AACT_QUERY);
-        assertThat(testSite.getAddress()).isEqualTo(UPDATED_ADDRESS);
+        assertThat(testSite.getName()).isEqualTo(UPDATED_NAME);
         assertThat(testSite.getCity()).isEqualTo(UPDATED_CITY);
         assertThat(testSite.getCountry()).isEqualTo(UPDATED_COUNTRY);
-        assertThat(testSite.getName()).isEqualTo(UPDATED_NAME);
         assertThat(testSite.getState()).isEqualTo(UPDATED_STATE);
+        assertThat(testSite.getAddress()).isEqualTo(UPDATED_ADDRESS);
         assertThat(testSite.getCoordinates()).isEqualTo(UPDATED_COORDINATES);
         assertThat(testSite.getGoogleMapResult()).isEqualTo(UPDATED_GOOGLE_MAP_RESULT);
     }

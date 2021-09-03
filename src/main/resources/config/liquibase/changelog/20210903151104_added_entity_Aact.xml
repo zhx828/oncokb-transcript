@@ -7,10 +7,10 @@
                         http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
 
     <!--
-        Added the entity Site.
+        Added the entity Aact.
     -->
-    <changeSet id="20210719201529-1" author="jhipster">
-        <createTable tableName="site">
+    <changeSet id="20210903151104-1" author="jhipster">
+        <createTable tableName="aact">
             <column name="id" type="bigint" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
@@ -26,14 +26,8 @@
             <column name="state" type="varchar(255)">
                 <constraints nullable="false" />
             </column>
-            <column name="address" type="varchar(255)">
-                <constraints nullable="false" />
-            </column>
-            <column name="coordinates" type="varchar(255)">
-                <constraints nullable="false" />
-            </column>
-            <column name="google_map_result" type="${clobType}">
-                <constraints nullable="false" />
+            <column name="site_id" type="bigint">
+                <constraints nullable="true" />
             </column>
             <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
         </createTable>

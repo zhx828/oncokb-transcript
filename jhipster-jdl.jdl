@@ -64,14 +64,20 @@ entity Arm {
 }
 
 entity Site {
-    aactQuery String required unique
-	address String required
+	name String required
 	city String required
 	country String required
-	name String required
 	state String required
+	address String required
 	coordinates String required
 	googleMapResult TextBlob required
+}
+
+entity Aact {
+	name String required
+	city String required
+	country String required
+	state String required
 }
 
 entity ClinicalTrial {
@@ -90,6 +96,7 @@ relationship OneToMany {
 relationship ManyToOne {
 	TranscriptUsage to Transcript
     Sequence to Transcript
+    Aact to Site
 }
 
 relationship ManyToMany {
