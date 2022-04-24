@@ -88,6 +88,18 @@ public class InfoService {
     }
 
     /**
+     * Get one info by type.
+     *
+     * @param type the info type of the entity.
+     * @return the entity.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Info> findOneByType(InfoType type) {
+        log.debug("Request to get Info by type : {}", type);
+        return infoRepository.findOneByType(type);
+    }
+
+    /**
      * Delete the info by id.
      *
      * @param id the id of the entity.

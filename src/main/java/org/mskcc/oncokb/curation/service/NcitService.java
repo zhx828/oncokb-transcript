@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.mskcc.oncokb.curation.domain.Drug;
 import org.mskcc.oncokb.curation.domain.DrugSynonym;
+import org.mskcc.oncokb.curation.domain.Info;
 import org.mskcc.oncokb.curation.domain.enumeration.InfoType;
 import org.mskcc.oncokb.curation.repository.DrugRepository;
 import org.mskcc.oncokb.curation.repository.DrugSynonymRepository;
@@ -48,9 +49,14 @@ public class NcitService {
         if (ncitVersion == null) {
             throw new ApiException("The NCIT README file has no content. Link to the README: " + NCIT_README);
         } else {
-            saveNcitData();
-            this.infoService.updateInfo(InfoType.NCIT_VERSION, ncitVersion, Instant.now());
-            return ncitVersion;
+            Optional<Info> ncitInfoOptional = this.infoService.findOneByType(InfoType.NCIT_VERSION);
+            if (ncitInfoOptional.isPresent() && ncitVersion.equals(ncitInfoOptional.get().getValue())) {
+                return ncitInfoOptional.get().getValue();
+            } else {
+                saveNcitData();
+                this.infoService.updateInfo(InfoType.NCIT_VERSION, ncitVersion, Instant.now());
+                return ncitVersion;
+            }
         }
     }
 
