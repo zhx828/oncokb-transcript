@@ -23,7 +23,7 @@ public class DeviceUsageIndication implements Serializable {
     private FdaSubmission fdaSubmission;
 
     @ManyToOne
-    @JsonIgnoreProperties(value = { "deviceUsageIndications", "gene", "consequence" }, allowSetters = true)
+    @JsonIgnoreProperties(value = { "deviceUsageIndications", "consequence", "genes" }, allowSetters = true)
     private Alteration alteration;
 
     @ManyToOne

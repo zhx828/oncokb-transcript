@@ -6,8 +6,8 @@ import { isNumber, ValidatedField, ValidatedForm } from 'react-jhipster';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { IRootStore } from 'app/stores';
 
-import { IGene } from 'app/shared/model/gene.model';
 import { IVariantConsequence } from 'app/shared/model/variant-consequence.model';
+import { IGene } from 'app/shared/model/gene.model';
 import { IAlteration } from 'app/shared/model/alteration.model';
 import { convertDateTimeFromServer, convertDateTimeToServer, displayDefaultDateTime } from 'app/shared/util/date-utils';
 import { mapIdList } from 'app/shared/util/entity-utils';
@@ -17,8 +17,8 @@ export interface IAlterationUpdateProps extends StoreProps, RouteComponentProps<
 export const AlterationUpdate = (props: IAlterationUpdateProps) => {
   const [isNew] = useState(!props.match.params || !props.match.params.id);
 
-  const genes = props.genes;
   const variantConsequences = props.variantConsequences;
+  const genes = props.genes;
   const alterationEntity = props.alterationEntity;
   const loading = props.loading;
   const updating = props.updating;
@@ -35,8 +35,8 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
       props.getEntity(props.match.params.id);
     }
 
-    props.getGenes({});
     props.getVariantConsequences({});
+    props.getGenes({});
   }, []);
 
   useEffect(() => {
@@ -49,7 +49,6 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
     const entity = {
       ...alterationEntity,
       ...values,
-      gene: genes.find(it => it.id.toString() === values.geneId.toString()),
       consequence: variantConsequences.find(it => it.id.toString() === values.consequenceId.toString()),
     };
 
@@ -66,7 +65,6 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
       : {
           type: 'MUTATION',
           ...alterationEntity,
-          geneId: alterationEntity?.gene?.id,
           consequenceId: alterationEntity?.consequence?.id,
         };
 
@@ -122,22 +120,12 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
                 data-cy="variantResidues"
                 type="text"
               />
-              <ValidatedField id="alteration-gene" name="geneId" data-cy="gene" label="Gene" type="select">
-                <option value="" key="0" />
-                {genes
-                  ? genes.map(otherEntity => (
-                      <option value={otherEntity.id} key={otherEntity.id}>
-                        {otherEntity.hugoSymbol}
-                      </option>
-                    ))
-                  : null}
-              </ValidatedField>
               <ValidatedField id="alteration-consequence" name="consequenceId" data-cy="consequence" label="Consequence" type="select">
                 <option value="" key="0" />
                 {variantConsequences
                   ? variantConsequences.map(otherEntity => (
                       <option value={otherEntity.id} key={otherEntity.id}>
-                        {otherEntity.term}
+                        {otherEntity.id}
                       </option>
                     ))
                   : null}
@@ -161,14 +149,14 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
 };
 
 const mapStoreToProps = (storeState: IRootStore) => ({
-  genes: storeState.geneStore.entities,
   variantConsequences: storeState.variantConsequenceStore.entities,
+  genes: storeState.geneStore.entities,
   alterationEntity: storeState.alterationStore.entity,
   loading: storeState.alterationStore.loading,
   updating: storeState.alterationStore.updating,
   updateSuccess: storeState.alterationStore.updateSuccess,
-  getGenes: storeState.geneStore.getEntities,
   getVariantConsequences: storeState.variantConsequenceStore.getEntities,
+  getGenes: storeState.geneStore.getEntities,
   getEntity: storeState.alterationStore.getEntity,
   updateEntity: storeState.alterationStore.updateEntity,
   createEntity: storeState.alterationStore.createEntity,
