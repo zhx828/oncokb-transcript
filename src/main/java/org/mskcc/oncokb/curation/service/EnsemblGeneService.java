@@ -8,7 +8,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.genome_nexus.ApiException;
 import org.mskcc.oncokb.curation.domain.EnsemblGene;
 import org.mskcc.oncokb.curation.domain.Gene;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 import org.mskcc.oncokb.curation.repository.EnsemblGeneRepository;
 import org.mskcc.oncokb.curation.vm.ensembl.EnsemblTranscript;
 import org.slf4j.Logger;
@@ -31,17 +32,20 @@ public class EnsemblGeneService {
     private final GenomeNexusService genomeNexusService;
     private final TranscriptService transcriptService;
     private final GeneService geneService;
+    private final ReferenceGenomeService referenceGenomeService;
 
     public EnsemblGeneService(
         EnsemblGeneRepository ensemblGeneRepository,
         GenomeNexusService genomeNexusService,
         TranscriptService transcriptService,
-        GeneService geneService
+        GeneService geneService,
+        ReferenceGenomeService referenceGenomeService
     ) {
         this.ensemblGeneRepository = ensemblGeneRepository;
         this.genomeNexusService = genomeNexusService;
         this.transcriptService = transcriptService;
         this.geneService = geneService;
+        this.referenceGenomeService = referenceGenomeService;
     }
 
     /**
@@ -118,7 +122,7 @@ public class EnsemblGeneService {
         return ensemblGeneRepository.findById(id);
     }
 
-    public Optional<EnsemblGene> findCanonicalEnsemblGene(Integer entrezGeneId, ReferenceGenome referenceGenome) {
+    public Optional<EnsemblGene> findCanonicalEnsemblGene(Integer entrezGeneId, EnsemblReferenceGenome referenceGenome) {
         return ensemblGeneRepository.findCanonicalEnsemblGene(entrezGeneId, referenceGenome.name());
     }
 
@@ -129,19 +133,23 @@ public class EnsemblGeneService {
      * @param referenceGenome
      * @return the entity.
      */
-    public Optional<EnsemblGene> findByEnsemblGeneIdAndReferenceGenome(String ensemblGeneId, ReferenceGenome referenceGenome) {
+    public Optional<EnsemblGene> findByEnsemblGeneIdAndReferenceGenome(String ensemblGeneId, EnsemblReferenceGenome referenceGenome) {
         return ensemblGeneRepository.findByEnsemblGeneIdAndReferenceGenome(ensemblGeneId, referenceGenome.name());
     }
 
-    public List<EnsemblGene> findAllByGeneAndReferenceGenome(Gene gene, ReferenceGenome referenceGenome) {
+    public List<EnsemblGene> findAllByGeneAndReferenceGenome(Gene gene, EnsemblReferenceGenome referenceGenome) {
         return ensemblGeneRepository.findAllByGeneAndReferenceGenome(gene, referenceGenome.name());
     }
 
-    public List<EnsemblGene> findAllByReferenceGenomeAndEnsemblGeneIdIn(ReferenceGenome referenceGenome, List<String> ensemblGeneIds) {
+    public List<EnsemblGene> findAllByReferenceGenomeAndEnsemblGeneIdIn(
+        EnsemblReferenceGenome referenceGenome,
+        List<String> ensemblGeneIds
+    ) {
         return ensemblGeneRepository.findAllByReferenceGenomeAndEnsemblGeneIdIn(referenceGenome.name(), ensemblGeneIds);
     }
 
-    public List<EnsemblGene> saveByReferenceGenomeAndEntrezGeneIds(ReferenceGenome rg, List<Integer> entrezGeneIds) throws ApiException {
+    public List<EnsemblGene> saveByReferenceGenomeAndEntrezGeneIds(EnsemblReferenceGenome rg, List<Integer> entrezGeneIds)
+        throws ApiException {
         List<org.genome_nexus.client.EnsemblGene> ensemblGeneFromGN = genomeNexusService.findCanonicalEnsemblGeneTranscript(
             rg,
             entrezGeneIds
@@ -178,7 +186,8 @@ public class EnsemblGeneService {
                             if (ensemblGeneOptional.isEmpty()) {
                                 EnsemblGene ensemblGene = new EnsemblGene();
                                 ensemblGene.setCanonical(true);
-                                ensemblGene.setReferenceGenome(rg.name());
+                                Optional<ReferenceGenome> re = referenceGenomeService.findOneByVersion(rg);
+                                ensemblGene.setReferenceGenome(re.get());
                                 ensemblGene.setEnsemblGeneId(et.getId());
                                 ensemblGene.setStrand(et.getStrand());
                                 ensemblGene.setStart(et.getStart());

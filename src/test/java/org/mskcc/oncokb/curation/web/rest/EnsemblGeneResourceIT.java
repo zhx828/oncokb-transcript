@@ -34,9 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 @WithMockUser
 class EnsemblGeneResourceIT {
 
-    private static final String DEFAULT_REFERENCE_GENOME = "AAAAAAAAAA";
-    private static final String UPDATED_REFERENCE_GENOME = "BBBBBBBBBB";
-
     private static final String DEFAULT_ENSEMBL_GENE_ID = "AAAAAAAAAA";
     private static final String UPDATED_ENSEMBL_GENE_ID = "BBBBBBBBBB";
 
@@ -80,7 +77,6 @@ class EnsemblGeneResourceIT {
      */
     public static EnsemblGene createEntity(EntityManager em) {
         EnsemblGene ensemblGene = new EnsemblGene()
-            .referenceGenome(DEFAULT_REFERENCE_GENOME)
             .ensemblGeneId(DEFAULT_ENSEMBL_GENE_ID)
             .canonical(DEFAULT_CANONICAL)
             .chromosome(DEFAULT_CHROMOSOME)
@@ -98,7 +94,6 @@ class EnsemblGeneResourceIT {
      */
     public static EnsemblGene createUpdatedEntity(EntityManager em) {
         EnsemblGene ensemblGene = new EnsemblGene()
-            .referenceGenome(UPDATED_REFERENCE_GENOME)
             .ensemblGeneId(UPDATED_ENSEMBL_GENE_ID)
             .canonical(UPDATED_CANONICAL)
             .chromosome(UPDATED_CHROMOSOME)
@@ -131,7 +126,6 @@ class EnsemblGeneResourceIT {
         List<EnsemblGene> ensemblGeneList = ensemblGeneRepository.findAll();
         assertThat(ensemblGeneList).hasSize(databaseSizeBeforeCreate + 1);
         EnsemblGene testEnsemblGene = ensemblGeneList.get(ensemblGeneList.size() - 1);
-        assertThat(testEnsemblGene.getReferenceGenome()).isEqualTo(DEFAULT_REFERENCE_GENOME);
         assertThat(testEnsemblGene.getEnsemblGeneId()).isEqualTo(DEFAULT_ENSEMBL_GENE_ID);
         assertThat(testEnsemblGene.getCanonical()).isEqualTo(DEFAULT_CANONICAL);
         assertThat(testEnsemblGene.getChromosome()).isEqualTo(DEFAULT_CHROMOSOME);
@@ -329,7 +323,6 @@ class EnsemblGeneResourceIT {
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(jsonPath("$.[*].id").value(hasItem(ensemblGene.getId().intValue())))
-            .andExpect(jsonPath("$.[*].referenceGenome").value(hasItem(DEFAULT_REFERENCE_GENOME)))
             .andExpect(jsonPath("$.[*].ensemblGeneId").value(hasItem(DEFAULT_ENSEMBL_GENE_ID)))
             .andExpect(jsonPath("$.[*].canonical").value(hasItem(DEFAULT_CANONICAL.booleanValue())))
             .andExpect(jsonPath("$.[*].chromosome").value(hasItem(DEFAULT_CHROMOSOME)))
@@ -350,7 +343,6 @@ class EnsemblGeneResourceIT {
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(jsonPath("$.id").value(ensemblGene.getId().intValue()))
-            .andExpect(jsonPath("$.referenceGenome").value(DEFAULT_REFERENCE_GENOME))
             .andExpect(jsonPath("$.ensemblGeneId").value(DEFAULT_ENSEMBL_GENE_ID))
             .andExpect(jsonPath("$.canonical").value(DEFAULT_CANONICAL.booleanValue()))
             .andExpect(jsonPath("$.chromosome").value(DEFAULT_CHROMOSOME))
@@ -379,7 +371,6 @@ class EnsemblGeneResourceIT {
         // Disconnect from session so that the updates on updatedEnsemblGene are not directly saved in db
         em.detach(updatedEnsemblGene);
         updatedEnsemblGene
-            .referenceGenome(UPDATED_REFERENCE_GENOME)
             .ensemblGeneId(UPDATED_ENSEMBL_GENE_ID)
             .canonical(UPDATED_CANONICAL)
             .chromosome(UPDATED_CHROMOSOME)
@@ -400,7 +391,6 @@ class EnsemblGeneResourceIT {
         List<EnsemblGene> ensemblGeneList = ensemblGeneRepository.findAll();
         assertThat(ensemblGeneList).hasSize(databaseSizeBeforeUpdate);
         EnsemblGene testEnsemblGene = ensemblGeneList.get(ensemblGeneList.size() - 1);
-        assertThat(testEnsemblGene.getReferenceGenome()).isEqualTo(UPDATED_REFERENCE_GENOME);
         assertThat(testEnsemblGene.getEnsemblGeneId()).isEqualTo(UPDATED_ENSEMBL_GENE_ID);
         assertThat(testEnsemblGene.getCanonical()).isEqualTo(UPDATED_CANONICAL);
         assertThat(testEnsemblGene.getChromosome()).isEqualTo(UPDATED_CHROMOSOME);
@@ -499,7 +489,6 @@ class EnsemblGeneResourceIT {
         List<EnsemblGene> ensemblGeneList = ensemblGeneRepository.findAll();
         assertThat(ensemblGeneList).hasSize(databaseSizeBeforeUpdate);
         EnsemblGene testEnsemblGene = ensemblGeneList.get(ensemblGeneList.size() - 1);
-        assertThat(testEnsemblGene.getReferenceGenome()).isEqualTo(DEFAULT_REFERENCE_GENOME);
         assertThat(testEnsemblGene.getEnsemblGeneId()).isEqualTo(DEFAULT_ENSEMBL_GENE_ID);
         assertThat(testEnsemblGene.getCanonical()).isEqualTo(UPDATED_CANONICAL);
         assertThat(testEnsemblGene.getChromosome()).isEqualTo(DEFAULT_CHROMOSOME);
@@ -521,7 +510,6 @@ class EnsemblGeneResourceIT {
         partialUpdatedEnsemblGene.setId(ensemblGene.getId());
 
         partialUpdatedEnsemblGene
-            .referenceGenome(UPDATED_REFERENCE_GENOME)
             .ensemblGeneId(UPDATED_ENSEMBL_GENE_ID)
             .canonical(UPDATED_CANONICAL)
             .chromosome(UPDATED_CHROMOSOME)
@@ -542,7 +530,6 @@ class EnsemblGeneResourceIT {
         List<EnsemblGene> ensemblGeneList = ensemblGeneRepository.findAll();
         assertThat(ensemblGeneList).hasSize(databaseSizeBeforeUpdate);
         EnsemblGene testEnsemblGene = ensemblGeneList.get(ensemblGeneList.size() - 1);
-        assertThat(testEnsemblGene.getReferenceGenome()).isEqualTo(UPDATED_REFERENCE_GENOME);
         assertThat(testEnsemblGene.getEnsemblGeneId()).isEqualTo(UPDATED_ENSEMBL_GENE_ID);
         assertThat(testEnsemblGene.getCanonical()).isEqualTo(UPDATED_CANONICAL);
         assertThat(testEnsemblGene.getChromosome()).isEqualTo(UPDATED_CHROMOSOME);

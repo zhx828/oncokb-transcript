@@ -54,6 +54,17 @@
         </createTable>
 
         <addPrimaryKey columnNames="alteration_id, gene_id" tableName="rel_alteration__gene"/>
+
+        <createTable tableName="rel_alteration__reference_genome">
+            <column name="reference_genome_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="alteration_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey columnNames="alteration_id, reference_genome_id" tableName="rel_alteration__reference_genome"/>
     </changeSet>
 
     <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->

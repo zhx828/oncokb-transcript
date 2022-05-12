@@ -16,6 +16,7 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
   const [isNew] = useState(!props.match.params || !props.match.params.id);
 
   const genes = props.genes;
+  const referenceGenomes = props.referenceGenomes;
   const variantConsequences = props.variantConsequences;
   const alterationEntity = props.alterationEntity;
   const loading = props.loading;
@@ -24,6 +25,7 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
 
   const alterationTypeOptions = Object.keys(AlterationType).map(key => ({ label: AlterationType[key], value: AlterationType[key] }));
   const geneOptions = genes.map(gene => ({ label: gene.hugoSymbol, value: gene.id }));
+  const referenceGenomeOptions = referenceGenomes.map(rg => ({ label: rg.version, value: rg.id }));
   const consequenceOptions = props.variantConsequences.map(consequence => ({ label: consequence.term, value: consequence.id }));
 
   const handleClose = () => {
@@ -38,6 +40,7 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
     }
 
     props.getGenes({});
+    props.getReferenceGenomes({});
     props.getVariantConsequences({});
   }, []);
 
@@ -49,11 +52,13 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
 
   const saveEntity = values => {
     const selectedGeneIds = values.genes?.map(gene => gene.value);
+    const selectedReferenceGenomeIds = values.referenceGenomes?.map(rg => rg.value);
     const entity = {
       ...alterationEntity,
       ...values,
       type: values.type.value,
-      genes: genes.filter(gene => selectedGeneIds.includes(gene.id)).map(gene => ({ id: gene.id, hugoSymbol: gene.hugoSymbol })),
+      genes: genes.filter(gene => selectedGeneIds.includes(gene.id)),
+      referenceGenomes: referenceGenomes.filter(rg => selectedReferenceGenomeIds.includes(rg.id)),
       consequence: variantConsequences.find(it => it.id.toString() === values.consequenceId?.value?.toString()),
     };
 
@@ -71,6 +76,7 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
           ...alterationEntity,
           type: { label: alterationEntity?.type, value: alterationEntity?.type },
           genes: alterationEntity ? alterationEntity.genes?.map(gene => ({ label: gene.hugoSymbol, value: gene.id })) : [],
+          referenceGenomes: alterationEntity ? alterationEntity.referenceGenomes?.map(rg => ({ label: rg.version, value: rg.id })) : [],
           consequenceId: { label: alterationEntity?.consequence?.term, value: alterationEntity?.consequence?.id },
         };
 
@@ -90,6 +96,7 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
           ) : (
             <ValidatedForm defaultValues={defaultValues()} onSubmit={saveEntity}>
               {!isNew ? <ValidatedField name="id" required readOnly id="alteration-id" label="ID" validate={{ required: true }} /> : null}
+              <ValidatedSelect label="Reference Genomes" name={'referenceGenomes'} options={referenceGenomeOptions} isMulti />
               <ValidatedSelect label="Type" name={'type'} options={alterationTypeOptions} />
               <ValidatedField
                 label="Name"
@@ -143,12 +150,14 @@ export const AlterationUpdate = (props: IAlterationUpdateProps) => {
 
 const mapStoreToProps = (storeState: IRootStore) => ({
   genes: storeState.geneStore.entities,
+  referenceGenomes: storeState.referenceGenomeStore.entities,
   variantConsequences: storeState.variantConsequenceStore.entities,
   alterationEntity: storeState.alterationStore.entity,
   loading: storeState.alterationStore.loading,
   updating: storeState.alterationStore.updating,
   updateSuccess: storeState.alterationStore.updateSuccess,
   getGenes: storeState.geneStore.getEntities,
+  getReferenceGenomes: storeState.referenceGenomeStore.getEntities,
   getVariantConsequences: storeState.variantConsequenceStore.getEntities,
   getEntity: storeState.alterationStore.getEntity,
   updateEntity: storeState.alterationStore.updateEntity,

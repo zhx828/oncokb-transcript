@@ -11,8 +11,9 @@ import org.genome_nexus.ApiException;
 import org.mskcc.oncokb.curation.domain.EnsemblGene;
 import org.mskcc.oncokb.curation.domain.Gene;
 import org.mskcc.oncokb.curation.domain.GenomeFragment;
+import org.mskcc.oncokb.curation.domain.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 import org.mskcc.oncokb.curation.domain.enumeration.GenomeFragmentType;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
 import org.mskcc.oncokb.curation.service.dto.TranscriptDTO;
 import org.mskcc.oncokb.curation.vm.ensembl.EnsemblTranscript;
 import org.slf4j.Logger;
@@ -31,22 +32,25 @@ public class MainService {
     private final EnsemblGeneService ensemblGeneService;
     private final GeneService geneService;
     private final GenomeNexusService genomeNexusService;
+    private final ReferenceGenomeService referenceGenomeService;
 
     public MainService(
         TranscriptService transcriptService,
         EnsemblService ensemblService,
         GeneService geneService,
         EnsemblGeneService ensemblGeneService,
-        GenomeNexusService genomeNexusService
+        GenomeNexusService genomeNexusService,
+        ReferenceGenomeService referenceGenomeService
     ) {
         this.transcriptService = transcriptService;
         this.geneService = geneService;
         this.ensemblService = ensemblService;
         this.ensemblGeneService = ensemblGeneService;
         this.genomeNexusService = genomeNexusService;
+        this.referenceGenomeService = referenceGenomeService;
     }
 
-    public void createCanonicalEnsemblGene(@NotNull ReferenceGenome referenceGenome, @NotNull Integer entrezGeneId) {
+    public void createCanonicalEnsemblGene(@NotNull EnsemblReferenceGenome referenceGenome, @NotNull Integer entrezGeneId) {
         Optional<EnsemblGene> savedCanonicalEnsemblGeneOptional = ensemblGeneService.findCanonicalEnsemblGene(
             entrezGeneId,
             referenceGenome
@@ -79,7 +83,7 @@ public class MainService {
     }
 
     public Optional<EnsemblGene> createEnsemblGene(
-        @NotNull ReferenceGenome referenceGenome,
+        @NotNull EnsemblReferenceGenome referenceGenome,
         @NotNull String ensemblGeneId,
         @NotNull Integer entrezGeneId,
         @NotNull Boolean isCanonical
@@ -104,7 +108,8 @@ public class MainService {
             if (ensemblGeneOptional.isPresent() && geneOptional.isPresent()) {
                 org.mskcc.oncokb.curation.vm.ensembl.EnsemblTranscript remoteEnsemblGene = ensemblGeneOptional.get();
                 EnsemblGene ensemblGene = new EnsemblGene();
-                ensemblGene.setReferenceGenome(referenceGenome.name());
+                Optional<ReferenceGenome> re = referenceGenomeService.findOneByVersion(referenceGenome);
+                ensemblGene.setReferenceGenome(re.get());
                 ensemblGene.setEnsemblGeneId(remoteEnsemblGene.getId());
                 ensemblGene.setChromosome(remoteEnsemblGene.getSeqRegionName());
                 ensemblGene.setStart(remoteEnsemblGene.getStart());
@@ -138,7 +143,7 @@ public class MainService {
      * @return an optional with the saved transcript
      */
     public Optional<TranscriptDTO> createTranscript(
-        @NotNull ReferenceGenome referenceGenome,
+        @NotNull EnsemblReferenceGenome referenceGenome,
         @NotNull String ensemblTranscriptId,
         @NotNull Integer entrezGeneId,
         @NotNull Boolean isCanonical
@@ -185,7 +190,7 @@ public class MainService {
 
         Optional<org.genome_nexus.client.EnsemblTranscript> gnEnsemblTranscriptOptional = transcriptService.getEnsemblTranscript(
             ensemblTranscript.getId(),
-            ReferenceGenome.valueOf(ensemblGene.getReferenceGenome())
+            EnsemblReferenceGenome.valueOf(ensemblGene.getReferenceGenome().getVersion().name())
         );
         if (gnEnsemblTranscriptOptional.isPresent()) {
             org.genome_nexus.client.EnsemblTranscript gnEnsemblTranscript = gnEnsemblTranscriptOptional.get();

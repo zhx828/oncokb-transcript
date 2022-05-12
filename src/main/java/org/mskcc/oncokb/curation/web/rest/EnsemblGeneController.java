@@ -4,7 +4,7 @@ import io.swagger.annotations.ApiParam;
 import java.util.Optional;
 import org.genome_nexus.ApiException;
 import org.mskcc.oncokb.curation.domain.EnsemblGene;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 import org.mskcc.oncokb.curation.service.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ public class EnsemblGeneController {
 
     @PostMapping("/add-ensembl-gene")
     public ResponseEntity<EnsemblGene> addEnsemblGene(
-        @RequestParam ReferenceGenome referenceGenome,
+        @RequestParam EnsemblReferenceGenome referenceGenome,
         @RequestParam int entrezGeneId,
         @RequestParam String ensemblGeneId,
         @ApiParam(defaultValue = "false") @RequestParam Boolean isCanonical

@@ -1,20 +1,20 @@
 package org.mskcc.oncokb.curation.vm;
 
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 
 /**
  * Created by Hongxin Zhang on 7/15/20.
  */
 public class TranscriptPairVM {
 
-    ReferenceGenome referenceGenome;
+    EnsemblReferenceGenome referenceGenome;
     String transcript;
 
-    public ReferenceGenome getReferenceGenome() {
+    public EnsemblReferenceGenome getReferenceGenome() {
         return referenceGenome;
     }
 
-    public void setReferenceGenome(ReferenceGenome referenceGenome) {
+    public void setReferenceGenome(EnsemblReferenceGenome referenceGenome) {
         this.referenceGenome = referenceGenome;
     }
 

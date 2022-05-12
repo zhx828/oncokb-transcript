@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Optional;
 import org.mskcc.oncokb.curation.domain.EnsemblGene;
 import org.mskcc.oncokb.curation.domain.Gene;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.stereotype.Repository;
 

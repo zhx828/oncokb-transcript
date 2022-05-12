@@ -22,10 +22,6 @@ public class EnsemblGene implements Serializable {
     private Long id;
 
     @NotNull
-    @Column(name = "reference_genome", nullable = false)
-    private String referenceGenome;
-
-    @NotNull
     @Column(name = "ensembl_gene_id", nullable = false)
     private String ensemblGeneId;
 
@@ -54,6 +50,10 @@ public class EnsemblGene implements Serializable {
     private Set<Transcript> transcripts = new HashSet<>();
 
     @ManyToOne
+    @JsonIgnoreProperties(value = { "ensemblGenes", "alterations" }, allowSetters = true)
+    private ReferenceGenome referenceGenome;
+
+    @ManyToOne
     @JsonIgnoreProperties(value = { "geneAliases", "ensemblGenes", "alterations" }, allowSetters = true)
     private Gene gene;
 
@@ -70,19 +70,6 @@ public class EnsemblGene implements Serializable {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public String getReferenceGenome() {
-        return this.referenceGenome;
-    }
-
-    public EnsemblGene referenceGenome(String referenceGenome) {
-        this.setReferenceGenome(referenceGenome);
-        return this;
-    }
-
-    public void setReferenceGenome(String referenceGenome) {
-        this.referenceGenome = referenceGenome;
     }
 
     public String getEnsemblGeneId() {
@@ -194,6 +181,19 @@ public class EnsemblGene implements Serializable {
         return this;
     }
 
+    public ReferenceGenome getReferenceGenome() {
+        return this.referenceGenome;
+    }
+
+    public void setReferenceGenome(ReferenceGenome referenceGenome) {
+        this.referenceGenome = referenceGenome;
+    }
+
+    public EnsemblGene referenceGenome(ReferenceGenome referenceGenome) {
+        this.setReferenceGenome(referenceGenome);
+        return this;
+    }
+
     public Gene getGene() {
         return this.gene;
     }
@@ -231,7 +231,6 @@ public class EnsemblGene implements Serializable {
     public String toString() {
         return "EnsemblGene{" +
             "id=" + getId() +
-            ", referenceGenome='" + getReferenceGenome() + "'" +
             ", ensemblGeneId='" + getEnsemblGeneId() + "'" +
             ", canonical='" + getCanonical() + "'" +
             ", chromosome='" + getChromosome() + "'" +

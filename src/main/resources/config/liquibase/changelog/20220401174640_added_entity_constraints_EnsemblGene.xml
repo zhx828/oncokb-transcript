@@ -8,6 +8,12 @@
     -->
     <changeSet id="20220401174640-2" author="jhipster">
 
+        <addForeignKeyConstraint baseColumnNames="reference_genome_id"
+                                 baseTableName="ensembl_gene"
+                                 constraintName="fk_ensembl_gene__reference_genome_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="reference_genome"/>
+
         <addForeignKeyConstraint baseColumnNames="gene_id"
                                  baseTableName="ensembl_gene"
                                  constraintName="fk_ensembl_gene__gene_id"

@@ -13,8 +13,9 @@ import org.genome_nexus.client.EnsemblTranscript;
 import org.mskcc.oncokb.curation.config.cache.CacheCategory;
 import org.mskcc.oncokb.curation.config.cache.CacheNameResolver;
 import org.mskcc.oncokb.curation.domain.*;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 import org.mskcc.oncokb.curation.domain.enumeration.GenomeFragmentType;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
 import org.mskcc.oncokb.curation.domain.enumeration.SequenceType;
 import org.mskcc.oncokb.curation.repository.TranscriptRepository;
 import org.mskcc.oncokb.curation.service.dto.TranscriptDTO;
@@ -105,7 +106,7 @@ public class TranscriptService {
         Optional<Sequence> sequenceOptional = sequenceService.findOneByTranscriptAndSequenceType(savedTranscript, SequenceType.PROTEIN);
         if (sequenceOptional.isEmpty() && StringUtils.isNotEmpty(savedTranscript.getEnsemblProteinId())) {
             Optional<EnsemblSequence> ensemblSequenceOptional = ensemblService.getProteinSequence(
-                ReferenceGenome.valueOf(savedTranscript.getEnsemblGene().getReferenceGenome()),
+                savedTranscript.getEnsemblGene().getReferenceGenome().getVersion(),
                 savedTranscript.getEnsemblProteinId()
             );
             if (ensemblSequenceOptional.isPresent()) {
@@ -215,7 +216,7 @@ public class TranscriptService {
      */
     @Transactional(readOnly = true)
     public Optional<TranscriptDTO> findByReferenceGenomeAndEnsemblTranscriptId(
-        ReferenceGenome referenceGenome,
+        EnsemblReferenceGenome referenceGenome,
         String ensembleTranscriptId
     ) {
         log.debug("Request to get Sequence : {}", ensembleTranscriptId);
@@ -232,7 +233,7 @@ public class TranscriptService {
 
     @Transactional(readOnly = true)
     public List<TranscriptDTO> findByReferenceGenomeAndEnsemblTranscriptIdIsIn(
-        ReferenceGenome referenceGenome,
+        EnsemblReferenceGenome referenceGenome,
         List<String> ensemblTranscriptIds
     ) {
         return transcriptRepository
@@ -248,7 +249,7 @@ public class TranscriptService {
     }
 
     public List<EnsemblTranscript> getTranscriptsWithMatchedResidue(
-        ReferenceGenome referenceGenome,
+        EnsemblReferenceGenome referenceGenome,
         List<EnsemblTranscript> transcripts,
         int proteinPosition,
         String expectedAllele
@@ -271,7 +272,7 @@ public class TranscriptService {
             .collect(Collectors.toList());
     }
 
-    public TranscriptMatchResultVM matchTranscript(TranscriptPairVM transcript, ReferenceGenome referenceGenome, String hugoSymbol) {
+    public TranscriptMatchResultVM matchTranscript(TranscriptPairVM transcript, EnsemblReferenceGenome referenceGenome, String hugoSymbol) {
         // Find whether both transcript length are the same
         Optional<EnsemblTranscript> _ensemblTranscript = Optional.empty();
         try {
@@ -307,7 +308,7 @@ public class TranscriptService {
         return transcriptMatchResultVM;
     }
 
-    public Optional<EnsemblTranscript> getEnsemblTranscript(String transcriptId, ReferenceGenome referenceGenome) {
+    public Optional<EnsemblTranscript> getEnsemblTranscript(String transcriptId, EnsemblReferenceGenome referenceGenome) {
         EnsemblControllerApi controllerApi = genomeNexusService.getEnsemblControllerApi(referenceGenome);
         try {
             EnsemblTranscript ensemblTranscript = controllerApi.fetchEnsemblTranscriptByTranscriptIdGET(transcriptId);
@@ -318,7 +319,7 @@ public class TranscriptService {
         }
     }
 
-    public List<EnsemblTranscript> getEnsemblTranscriptList(String hugoSymbol, ReferenceGenome referenceGenome) {
+    public List<EnsemblTranscript> getEnsemblTranscriptList(String hugoSymbol, EnsemblReferenceGenome referenceGenome) {
         EnsemblControllerApi controllerApi = genomeNexusService.getEnsemblControllerApi(referenceGenome);
         Set<EnsemblTranscript> transcripts = new LinkedHashSet<>();
         try {
@@ -334,7 +335,7 @@ public class TranscriptService {
         return new ArrayList<>(transcripts);
     }
 
-    public EnsemblTranscript getCanonicalEnsemblTranscript(String hugoSymbol, ReferenceGenome referenceGenome) throws ApiException {
+    public EnsemblTranscript getCanonicalEnsemblTranscript(String hugoSymbol, EnsemblReferenceGenome referenceGenome) throws ApiException {
         EnsemblControllerApi controllerApi = genomeNexusService.getEnsemblControllerApi(referenceGenome);
         return controllerApi.fetchCanonicalEnsemblTranscriptByHugoSymbolGET(hugoSymbol, "msk");
     }
@@ -357,7 +358,7 @@ public class TranscriptService {
      * @return a lit of expanded ensembl transcripts with exon/utr info
      */
     public List<org.mskcc.oncokb.curation.vm.ensembl.EnsemblTranscript> getEnsemblTranscriptIds(
-        ReferenceGenome referenceGenome,
+        EnsemblReferenceGenome referenceGenome,
         List<String> ids,
         boolean includeUtr,
         boolean expand
@@ -380,7 +381,7 @@ public class TranscriptService {
 
     private TranscriptMatchResultVM pickEnsemblTranscript(
         TranscriptMatchResultVM transcriptMatchResultVM,
-        ReferenceGenome referenceGenome,
+        EnsemblReferenceGenome referenceGenome,
         List<EnsemblTranscript> availableTranscripts,
         EnsemblSequence sequence
     ) {
@@ -461,9 +462,9 @@ public class TranscriptService {
     }
 
     public List<EnrichedAlignmentResult> getAlignmentResult(
-        ReferenceGenome refReferenceGenome,
+        EnsemblReferenceGenome refReferenceGenome,
         EnsemblTranscript refEnsemblTranscript,
-        ReferenceGenome targetReferenceGenome,
+        EnsemblReferenceGenome targetReferenceGenome,
         List<EnsemblTranscript> targetTranscripts
     ) {
         Optional<EnsemblSequence> refSequenceOptional = ensemblService.getProteinSequence(

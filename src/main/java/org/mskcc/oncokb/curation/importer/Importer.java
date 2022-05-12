@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import org.mskcc.oncokb.curation.domain.EnsemblGene;
 import org.mskcc.oncokb.curation.domain.Sequence;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 import org.mskcc.oncokb.curation.domain.enumeration.SequenceType;
 import org.mskcc.oncokb.curation.service.*;
 import org.mskcc.oncokb.curation.service.dto.TranscriptDTO;
@@ -80,7 +80,7 @@ public class Importer {
             PageRequest genePage = PageRequest.of(i, pageSize);
             allGenes.addAll(geneService.findAll(genePage).toList());
         }
-        for (ReferenceGenome rg : ReferenceGenome.values()) {
+        for (EnsemblReferenceGenome rg : EnsemblReferenceGenome.values()) {
             for (org.mskcc.oncokb.curation.domain.Gene gene : allGenes) {
                 mainService.createCanonicalEnsemblGene(rg, gene.getEntrezGeneId());
             }
@@ -95,9 +95,9 @@ public class Importer {
                 log.info("Processing index {}", i);
             }
             // import canonical GRCh37 transcript
-            mainService.createTranscript(ReferenceGenome.GRCh37, gene.getGrch37Isoform(), gene.getEntrezGeneId(), true);
+            mainService.createTranscript(EnsemblReferenceGenome.GRCh37, gene.getGrch37Isoform(), gene.getEntrezGeneId(), true);
             // import canonical GRCh38 transcript
-            mainService.createTranscript(ReferenceGenome.GRCh38, gene.getGrch38Isoform(), gene.getEntrezGeneId(), true);
+            mainService.createTranscript(EnsemblReferenceGenome.GRCh38, gene.getGrch38Isoform(), gene.getEntrezGeneId(), true);
         }
     }
 
@@ -111,7 +111,7 @@ public class Importer {
                 // grch37
                 List<EnsemblGene> ensembl37Genes = ensemblGeneService.findAllByGeneAndReferenceGenome(
                     geneOptional.get(),
-                    ReferenceGenome.GRCh37
+                    EnsemblReferenceGenome.GRCh37
                 );
                 if (ensembl37Genes.size() > 0) {
                     ensembl37Genes.forEach(ensemblGene ->
@@ -120,7 +120,7 @@ public class Importer {
                 } else {
                     log.error(
                         "No ensembl gene found for gene {} {}:{}",
-                        ReferenceGenome.GRCh37,
+                        EnsemblReferenceGenome.GRCh37,
                         gene.getEntrezGeneId(),
                         gene.getHugoSymbol()
                     );
@@ -128,7 +128,7 @@ public class Importer {
                 // grch38
                 List<EnsemblGene> ensembl38Genes = ensemblGeneService.findAllByGeneAndReferenceGenome(
                     geneOptional.get(),
-                    ReferenceGenome.GRCh38
+                    EnsemblReferenceGenome.GRCh38
                 );
                 if (ensembl38Genes.size() > 0) {
                     ensembl38Genes.forEach(ensemblGene ->
@@ -137,7 +137,7 @@ public class Importer {
                 } else {
                     log.error(
                         "No ensembl gene found for gene {} {}:{}",
-                        ReferenceGenome.GRCh38,
+                        EnsemblReferenceGenome.GRCh38,
                         gene.getEntrezGeneId(),
                         gene.getHugoSymbol()
                     );
@@ -158,11 +158,11 @@ public class Importer {
             } else {
                 log.info("Checking gene {}:{}", gene.getEntrezGeneId(), gene.getHugoSymbol());
                 Optional<TranscriptDTO> grch37TranscriptDtoOptional = transcriptService.findByReferenceGenomeAndEnsemblTranscriptId(
-                    ReferenceGenome.GRCh37,
+                    EnsemblReferenceGenome.GRCh37,
                     gene.getGrch37Isoform()
                 );
                 Optional<TranscriptDTO> grch38TranscriptDtoOptional = transcriptService.findByReferenceGenomeAndEnsemblTranscriptId(
-                    ReferenceGenome.GRCh38,
+                    EnsemblReferenceGenome.GRCh38,
                     gene.getGrch38Isoform()
                 );
 

@@ -6,7 +6,7 @@ import org.genome_nexus.ApiException;
 import org.genome_nexus.client.EnsemblTranscript;
 import org.mskcc.oncokb.curation.domain.AlignmentResult;
 import org.mskcc.oncokb.curation.domain.EnrichedAlignmentResult;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 import org.mskcc.oncokb.curation.service.*;
 import org.mskcc.oncokb.curation.service.dto.TranscriptDTO;
 import org.mskcc.oncokb.curation.vm.*;
@@ -112,7 +112,7 @@ public class TranscriptController {
 
     @PostMapping("/find-transcripts-by-ensembl-ids")
     public ResponseEntity<List<TranscriptDTO>> findTranscriptsByEnsemblIds(
-        @RequestParam ReferenceGenome referenceGenome,
+        @RequestParam EnsemblReferenceGenome referenceGenome,
         @RequestBody List<String> ensemblTranscriptIds
     ) {
         return new ResponseEntity<>(
@@ -160,14 +160,14 @@ public class TranscriptController {
         AllReferenceTranscriptSuggestionVM allReferenceTranscriptSuggestionVM = new AllReferenceTranscriptSuggestionVM();
 
         List<EnsemblTranscript> ensembl37Transcripts = transcriptService.getTranscriptsWithMatchedResidue(
-            ReferenceGenome.GRCh37,
-            transcriptService.getEnsemblTranscriptList(hugoSymbol, ReferenceGenome.GRCh37),
+            EnsemblReferenceGenome.GRCh37,
+            transcriptService.getEnsemblTranscriptList(hugoSymbol, EnsemblReferenceGenome.GRCh37),
             proteinPosition,
             curatedResidue
         );
         List<EnsemblTranscript> ensembl38Transcripts = transcriptService.getTranscriptsWithMatchedResidue(
-            ReferenceGenome.GRCh38,
-            transcriptService.getEnsemblTranscriptList(hugoSymbol, ReferenceGenome.GRCh38),
+            EnsemblReferenceGenome.GRCh38,
+            transcriptService.getEnsemblTranscriptList(hugoSymbol, EnsemblReferenceGenome.GRCh38),
             proteinPosition,
             curatedResidue
         );
@@ -177,7 +177,7 @@ public class TranscriptController {
         } else {
             Optional<EnsemblTranscript> ensemblTranscriptOptional = transcriptService.getEnsemblTranscript(
                 grch37Transcript,
-                ReferenceGenome.GRCh37
+                EnsemblReferenceGenome.GRCh37
             );
             if (ensemblTranscriptOptional.isPresent()) {
                 if (
@@ -192,9 +192,9 @@ public class TranscriptController {
                     allReferenceTranscriptSuggestionVM.getGrch37().setNote("Exact match");
                 } else {
                     List<EnrichedAlignmentResult> alignmentResults = transcriptService.getAlignmentResult(
-                        ReferenceGenome.GRCh37,
+                        EnsemblReferenceGenome.GRCh37,
                         ensemblTranscriptOptional.get(),
-                        ReferenceGenome.GRCh37,
+                        EnsemblReferenceGenome.GRCh37,
                         ensembl37Transcripts
                     );
                     List<EnrichedAlignmentResult> belowThresholdPenalty = alignmentResults
@@ -233,7 +233,7 @@ public class TranscriptController {
         } else {
             Optional<EnsemblTranscript> ensemblTranscriptOptional = transcriptService.getEnsemblTranscript(
                 grch38Transcript,
-                ReferenceGenome.GRCh38
+                EnsemblReferenceGenome.GRCh38
             );
             if (ensemblTranscriptOptional.isPresent()) {
                 if (
@@ -248,9 +248,9 @@ public class TranscriptController {
                     allReferenceTranscriptSuggestionVM.getGrch38().setNote("Exact match");
                 } else {
                     List<EnrichedAlignmentResult> alignmentResults = transcriptService.getAlignmentResult(
-                        ReferenceGenome.GRCh38,
+                        EnsemblReferenceGenome.GRCh38,
                         ensemblTranscriptOptional.get(),
-                        ReferenceGenome.GRCh38,
+                        EnsemblReferenceGenome.GRCh38,
                         ensembl38Transcripts
                     );
                     List<EnrichedAlignmentResult> belowThresholdPenalty = alignmentResults
@@ -291,12 +291,12 @@ public class TranscriptController {
     @PostMapping("/add-transcript")
     public ResponseEntity<TranscriptDTO> addTranscript(
         @RequestParam int entrezGeneId,
-        @RequestParam ReferenceGenome referenceGenome,
+        @RequestParam EnsemblReferenceGenome ensemblReferenceGenome,
         @RequestParam String ensemblTranscriptId,
         @RequestParam Boolean isCanonical
     ) throws ApiException {
         Optional<TranscriptDTO> transcriptDTOOptional = mainService.createTranscript(
-            referenceGenome,
+            ensemblReferenceGenome,
             ensemblTranscriptId,
             entrezGeneId,
             isCanonical

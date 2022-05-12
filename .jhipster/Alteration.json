@@ -49,6 +49,13 @@
       "ownerSide": true
     },
     {
+      "relationshipType": "many-to-many",
+      "otherEntityName": "referenceGenome",
+      "otherEntityRelationshipName": "alteration",
+      "relationshipName": "referenceGenome",
+      "ownerSide": true
+    },
+    {
       "relationshipType": "many-to-one",
       "otherEntityName": "variantConsequence",
       "otherEntityRelationshipName": "alteration",

@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.mskcc.oncokb.curation.domain.EnsemblGene;
 import org.mskcc.oncokb.curation.domain.Sequence;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 import org.mskcc.oncokb.curation.domain.enumeration.SequenceType;
 import org.mskcc.oncokb.curation.service.EnsemblGeneService;
 import org.mskcc.oncokb.curation.service.SequenceService;
@@ -47,7 +47,7 @@ public class SequenceController {
 
     @GetMapping("/find-canonical-sequences")
     public Sequence findCanonicalSequence(
-        @RequestParam ReferenceGenome referenceGenome,
+        @RequestParam EnsemblReferenceGenome referenceGenome,
         @RequestParam Integer entrezGeneId,
         @RequestParam(defaultValue = "PROTEIN") SequenceType sequenceType
     ) {
@@ -57,7 +57,7 @@ public class SequenceController {
 
     @PostMapping("/find-canonical-sequences")
     public List<Sequence> findCanonicalSequences(
-        @RequestParam ReferenceGenome referenceGenome,
+        @RequestParam EnsemblReferenceGenome referenceGenome,
         @RequestParam(defaultValue = "PROTEIN") SequenceType sequenceType,
         @RequestBody List<Integer> entrezGeneIds
     ) {
@@ -73,7 +73,7 @@ public class SequenceController {
         }
     }
 
-    private Sequence findSequence(ReferenceGenome referenceGenome, Integer entrezGeneId, SequenceType sequenceType) {
+    private Sequence findSequence(EnsemblReferenceGenome referenceGenome, Integer entrezGeneId, SequenceType sequenceType) {
         Optional<EnsemblGene> ensemblGeneOptional = ensemblGeneService.findCanonicalEnsemblGene(entrezGeneId, referenceGenome);
         if (ensemblGeneOptional.isPresent()) {
             Optional<TranscriptDTO> transcriptDTOOptional = transcriptService.findByEnsemblGeneAndCanonicalIsTrue(

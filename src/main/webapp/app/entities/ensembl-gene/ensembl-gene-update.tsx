@@ -6,6 +6,7 @@ import { isNumber, ValidatedField, ValidatedForm } from 'react-jhipster';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { IRootStore } from 'app/stores';
 
+import { IReferenceGenome } from 'app/shared/model/reference-genome.model';
 import { IGene } from 'app/shared/model/gene.model';
 import { IEnsemblGene } from 'app/shared/model/ensembl-gene.model';
 import { convertDateTimeFromServer, convertDateTimeToServer, displayDefaultDateTime } from 'app/shared/util/date-utils';
@@ -16,6 +17,7 @@ export interface IEnsemblGeneUpdateProps extends StoreProps, RouteComponentProps
 export const EnsemblGeneUpdate = (props: IEnsemblGeneUpdateProps) => {
   const [isNew] = useState(!props.match.params || !props.match.params.id);
 
+  const referenceGenomes = props.referenceGenomes;
   const genes = props.genes;
   const ensemblGeneEntity = props.ensemblGeneEntity;
   const loading = props.loading;
@@ -33,6 +35,7 @@ export const EnsemblGeneUpdate = (props: IEnsemblGeneUpdateProps) => {
       props.getEntity(props.match.params.id);
     }
 
+    props.getReferenceGenomes({});
     props.getGenes({});
   }, []);
 
@@ -46,6 +49,7 @@ export const EnsemblGeneUpdate = (props: IEnsemblGeneUpdateProps) => {
     const entity = {
       ...ensemblGeneEntity,
       ...values,
+      referenceGenome: referenceGenomes.find(it => it.id.toString() === values.referenceGenomeId.toString()),
       gene: genes.find(it => it.id.toString() === values.geneId.toString()),
     };
 
@@ -61,6 +65,7 @@ export const EnsemblGeneUpdate = (props: IEnsemblGeneUpdateProps) => {
       ? {}
       : {
           ...ensemblGeneEntity,
+          referenceGenomeId: ensemblGeneEntity?.referenceGenome?.id,
           geneId: ensemblGeneEntity?.gene?.id,
         };
 
@@ -80,16 +85,6 @@ export const EnsemblGeneUpdate = (props: IEnsemblGeneUpdateProps) => {
           ) : (
             <ValidatedForm defaultValues={defaultValues()} onSubmit={saveEntity}>
               {!isNew ? <ValidatedField name="id" required readOnly id="ensembl-gene-id" label="ID" validate={{ required: true }} /> : null}
-              <ValidatedField
-                label="Reference Genome"
-                id="ensembl-gene-referenceGenome"
-                name="referenceGenome"
-                data-cy="referenceGenome"
-                type="text"
-                validate={{
-                  required: { value: true, message: 'This field is required.' },
-                }}
-              />
               <ValidatedField
                 label="Ensembl Gene Id"
                 id="ensembl-gene-ensemblGeneId"
@@ -144,6 +139,22 @@ export const EnsemblGeneUpdate = (props: IEnsemblGeneUpdateProps) => {
                   validate: v => isNumber(v) || 'This field should be a number.',
                 }}
               />
+              <ValidatedField
+                id="ensembl-gene-referenceGenome"
+                name="referenceGenomeId"
+                data-cy="referenceGenome"
+                label="Reference Genome"
+                type="select"
+              >
+                <option value="" key="0" />
+                {referenceGenomes
+                  ? referenceGenomes.map(otherEntity => (
+                      <option value={otherEntity.id} key={otherEntity.id}>
+                        {otherEntity.version}
+                      </option>
+                    ))
+                  : null}
+              </ValidatedField>
               <ValidatedField id="ensembl-gene-gene" name="geneId" data-cy="gene" label="Gene" type="select">
                 <option value="" key="0" />
                 {genes
@@ -173,11 +184,13 @@ export const EnsemblGeneUpdate = (props: IEnsemblGeneUpdateProps) => {
 };
 
 const mapStoreToProps = (storeState: IRootStore) => ({
+  referenceGenomes: storeState.referenceGenomeStore.entities,
   genes: storeState.geneStore.entities,
   ensemblGeneEntity: storeState.ensemblGeneStore.entity,
   loading: storeState.ensemblGeneStore.loading,
   updating: storeState.ensemblGeneStore.updating,
   updateSuccess: storeState.ensemblGeneStore.updateSuccess,
+  getReferenceGenomes: storeState.referenceGenomeStore.getEntities,
   getGenes: storeState.geneStore.getEntities,
   getEntity: storeState.ensemblGeneStore.getEntity,
   updateEntity: storeState.ensemblGeneStore.updateEntity,

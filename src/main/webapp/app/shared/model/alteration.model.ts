@@ -1,5 +1,6 @@
 import { IDeviceUsageIndication } from 'app/shared/model/device-usage-indication.model';
 import { IGene } from 'app/shared/model/gene.model';
+import { IReferenceGenome } from 'app/shared/model/reference-genome.model';
 import { IVariantConsequence } from 'app/shared/model/variant-consequence.model';
 import { AlterationType } from 'app/shared/model/enumerations/alteration-type.model';
 
@@ -14,6 +15,7 @@ export interface IAlteration {
   variantResidues?: string | null;
   deviceUsageIndications?: IDeviceUsageIndication[] | null;
   genes?: IGene[] | null;
+  referenceGenomes?: IReferenceGenome[] | null;
   consequence?: IVariantConsequence | null;
 }
 

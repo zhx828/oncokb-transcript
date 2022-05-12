@@ -1,9 +1,9 @@
 import { ITranscript } from 'app/shared/model/transcript.model';
+import { IReferenceGenome } from 'app/shared/model/reference-genome.model';
 import { IGene } from 'app/shared/model/gene.model';
 
 export interface IEnsemblGene {
   id?: number;
-  referenceGenome?: string;
   ensemblGeneId?: string;
   canonical?: boolean;
   chromosome?: string;
@@ -11,6 +11,7 @@ export interface IEnsemblGene {
   end?: number;
   strand?: number;
   transcripts?: ITranscript[] | null;
+  referenceGenome?: IReferenceGenome | null;
   gene?: IGene | null;
 }
 

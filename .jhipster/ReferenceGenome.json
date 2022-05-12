@@ -1,0 +1,36 @@
+{
+  "name": "ReferenceGenome",
+  "fields": [
+    {
+      "fieldName": "version",
+      "fieldType": "EnsemblReferenceGenome",
+      "fieldValues": "GRCh37,GRCh38",
+      "fieldValidateRules": ["unique", "required"]
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipType": "one-to-many",
+      "otherEntityName": "ensemblGene",
+      "otherEntityRelationshipName": "referenceGenome",
+      "relationshipName": "ensemblGene"
+    },
+    {
+      "relationshipType": "many-to-many",
+      "otherEntityName": "alteration",
+      "otherEntityRelationshipName": "referenceGenome",
+      "relationshipName": "alteration",
+      "ownerSide": false
+    }
+  ],
+  "entityTableName": "reference_genome",
+  "dto": "no",
+  "pagination": "no",
+  "service": "serviceClass",
+  "jpaMetamodelFiltering": false,
+  "fluentMethods": true,
+  "readOnly": false,
+  "embedded": false,
+  "applications": "*",
+  "changelogDate": "20220512193326"
+}

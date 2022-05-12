@@ -1,4 +1,13 @@
 
+
+enum EnsemblReferenceGenome {
+ GRCh37, GRCh38
+}
+
+entity ReferenceGenome {
+    version EnsemblReferenceGenome unique required,
+}
+
 entity Transcript {
     ensemblTranscriptId String,
     canonical Boolean required,
@@ -8,7 +17,6 @@ entity Transcript {
 }
 
 entity EnsemblGene {
-    referenceGenome String required,
     ensemblGeneId String required,
     canonical Boolean required,
     chromosome String required,
@@ -218,8 +226,13 @@ relationship OneToMany {
     Drug{brands} to DrugBrand
 }
 
+relationship ManyToOne {
+    EnsemblGene to ReferenceGenome
+}
+
 relationship ManyToMany {
     Alteration to Gene
+    Alteration to ReferenceGenome
     CompanionDiagnosticDevice to SpecimenType
 }
 

@@ -84,9 +84,10 @@
       "DeviceUsageIndication",
       "Article",
       "DrugBrand",
-      "CategoricalAlteration"
+      "CategoricalAlteration",
+      "ReferenceGenome"
     ],
-    "lastLiquibaseTimestamp": 1651162353000,
+    "lastLiquibaseTimestamp": 1652384006000,
     "devServerPort": 9060,
     "enableGradleEnterprise": false
   }

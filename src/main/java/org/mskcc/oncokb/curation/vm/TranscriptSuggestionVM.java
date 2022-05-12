@@ -2,22 +2,22 @@ package org.mskcc.oncokb.curation.vm;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 
 /**
  * Created by Hongxin Zhang on 7/15/20.
  */
 public class TranscriptSuggestionVM {
 
-    ReferenceGenome referenceGenome;
+    EnsemblReferenceGenome referenceGenome;
     String note = "";
     List<String> suggestions = new ArrayList<>();
 
-    public ReferenceGenome getReferenceGenome() {
+    public EnsemblReferenceGenome getReferenceGenome() {
         return referenceGenome;
     }
 
-    public void setReferenceGenome(ReferenceGenome referenceGenome) {
+    public void setReferenceGenome(EnsemblReferenceGenome referenceGenome) {
         this.referenceGenome = referenceGenome;
     }
 

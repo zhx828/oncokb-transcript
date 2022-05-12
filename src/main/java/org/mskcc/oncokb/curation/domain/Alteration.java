@@ -61,6 +61,15 @@ public class Alteration implements Serializable {
     @JsonIgnoreProperties(value = { "geneAliases", "ensemblGenes", "alterations" }, allowSetters = true)
     private Set<Gene> genes = new HashSet<>();
 
+    @ManyToMany
+    @JoinTable(
+        name = "rel_alteration__reference_genome",
+        joinColumns = @JoinColumn(name = "alteration_id"),
+        inverseJoinColumns = @JoinColumn(name = "reference_genome_id")
+    )
+    @JsonIgnoreProperties(value = { "ensemblGenes", "alterations" }, allowSetters = true)
+    private Set<ReferenceGenome> referenceGenomes = new HashSet<>();
+
     @ManyToOne
     @JsonIgnoreProperties(value = { "alterations" }, allowSetters = true)
     private VariantConsequence consequence;
@@ -224,6 +233,31 @@ public class Alteration implements Serializable {
     public Alteration removeGene(Gene gene) {
         this.genes.remove(gene);
         gene.getAlterations().remove(this);
+        return this;
+    }
+
+    public Set<ReferenceGenome> getReferenceGenomes() {
+        return this.referenceGenomes;
+    }
+
+    public void setReferenceGenomes(Set<ReferenceGenome> referenceGenomes) {
+        this.referenceGenomes = referenceGenomes;
+    }
+
+    public Alteration referenceGenomes(Set<ReferenceGenome> referenceGenomes) {
+        this.setReferenceGenomes(referenceGenomes);
+        return this;
+    }
+
+    public Alteration addReferenceGenome(ReferenceGenome referenceGenome) {
+        this.referenceGenomes.add(referenceGenome);
+        referenceGenome.getAlterations().add(this);
+        return this;
+    }
+
+    public Alteration removeReferenceGenome(ReferenceGenome referenceGenome) {
+        this.referenceGenomes.remove(referenceGenome);
+        referenceGenome.getAlterations().remove(this);
         return this;
     }
 

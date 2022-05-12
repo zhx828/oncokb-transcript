@@ -1,9 +1,9 @@
 package org.mskcc.oncokb.curation.domain.enumeration;
 
 /**
- * The ReferenceGenome enumeration.
+ * The EnsemblReferenceGenome enumeration.
  */
-public enum ReferenceGenome {
+public enum EnsemblReferenceGenome {
     GRCh37,
     GRCh38,
 }

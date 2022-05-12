@@ -75,6 +75,7 @@ import deviceUsageIndication, {
 import article, { ArticleStore } from 'app/entities/article/article.store';
 import DrugBrandStore from 'app/entities/drug-brand/drug-brand.store';
 import CategoricalAlterationStore from 'app/entities/categorical-alteration/categorical-alteration.store';
+import ReferenceGenomeStore from 'app/entities/reference-genome/reference-genome.store';
 /* jhipster-needle-add-store-import - JHipster will add store here */
 
 export interface IRootStore {
@@ -103,6 +104,7 @@ export interface IRootStore {
   readonly articleStore: ArticleStore;
   readonly drugBrandStore: DrugBrandStore;
   readonly categoricalAlterationStore: CategoricalAlterationStore;
+  readonly referenceGenomeStore: ReferenceGenomeStore;
   /* jhipster-needle-add-store-field - JHipster will add store here */
 }
 
@@ -134,6 +136,7 @@ export function createStores(history: History): IRootStore {
   rootStore.articleStore = new ArticleStore(rootStore);
   rootStore.drugBrandStore = new DrugBrandStore(rootStore);
   rootStore.categoricalAlterationStore = new CategoricalAlterationStore(rootStore);
+  rootStore.referenceGenomeStore = new ReferenceGenomeStore(rootStore);
   /* jhipster-needle-add-store-init - JHipster will add store here */
   return rootStore;
 }

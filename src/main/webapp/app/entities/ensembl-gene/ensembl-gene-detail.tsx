@@ -25,10 +25,6 @@ export const EnsemblGeneDetail = (props: IEnsemblGeneDetailProps) => {
           </dt>
           <dd>{ensemblGeneEntity.id}</dd>
           <dt>
-            <span id="referenceGenome">Reference Genome</span>
-          </dt>
-          <dd>{ensemblGeneEntity.referenceGenome}</dd>
-          <dt>
             <span id="ensemblGeneId">Ensembl Gene Id</span>
           </dt>
           <dd>{ensemblGeneEntity.ensemblGeneId}</dd>
@@ -52,6 +48,8 @@ export const EnsemblGeneDetail = (props: IEnsemblGeneDetailProps) => {
             <span id="strand">Strand</span>
           </dt>
           <dd>{ensemblGeneEntity.strand}</dd>
+          <dt>Reference Genome</dt>
+          <dd>{ensemblGeneEntity.referenceGenome ? ensemblGeneEntity.referenceGenome.version : ''}</dd>
           <dt>Gene</dt>
           <dd>{ensemblGeneEntity.gene ? ensemblGeneEntity.gene.id : ''}</dd>
         </dl>

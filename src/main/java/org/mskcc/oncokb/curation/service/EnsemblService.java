@@ -6,17 +6,14 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.genome_nexus.ApiClient;
-import org.genome_nexus.client.EnsemblControllerApi;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
+import org.mskcc.oncokb.curation.domain.enumeration.EnsemblReferenceGenome;
 import org.mskcc.oncokb.curation.vm.ensembl.EnsemblSequence;
 import org.mskcc.oncokb.curation.vm.ensembl.EnsemblTranscript;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -29,15 +26,15 @@ public class EnsemblService {
     public final String ENSEMBL_37_API_URL = "https://grch37.rest.ensembl.org";
     public final String ENSEMBL_38_API_URL = "https://rest.ensembl.org";
 
-    private String getSequenceGETUrl(ReferenceGenome referenceGenome, String transcript) {
+    private String getSequenceGETUrl(EnsemblReferenceGenome referenceGenome, String transcript) {
         return getEnsemblAPIUrl(referenceGenome) + "/sequence/id/" + transcript;
     }
 
-    private String getSequencePOSTUrl(ReferenceGenome referenceGenome) {
+    private String getSequencePOSTUrl(EnsemblReferenceGenome referenceGenome) {
         return getEnsemblAPIUrl(referenceGenome) + "/sequence/id";
     }
 
-    public Optional<EnsemblSequence> getProteinSequence(ReferenceGenome referenceGenome, String transcript) {
+    public Optional<EnsemblSequence> getProteinSequence(EnsemblReferenceGenome referenceGenome, String transcript) {
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> entity = new HttpEntity<>(httpHeaders);
@@ -57,7 +54,7 @@ public class EnsemblService {
         }
     }
 
-    public List<EnsemblSequence> getProteinSequences(ReferenceGenome referenceGenome, List<String> transcripts) {
+    public List<EnsemblSequence> getProteinSequences(EnsemblReferenceGenome referenceGenome, List<String> transcripts) {
         if (transcripts.size() == 0) {
             return new ArrayList<>();
         }
@@ -83,7 +80,7 @@ public class EnsemblService {
     }
 
     public Optional<org.mskcc.oncokb.curation.vm.ensembl.EnsemblTranscript> getTranscript(
-        ReferenceGenome referenceGenome,
+        EnsemblReferenceGenome referenceGenome,
         String transcriptId
     ) {
         List<org.mskcc.oncokb.curation.vm.ensembl.EnsemblTranscript> ensemblTranscriptList = getIds(
@@ -96,7 +93,7 @@ public class EnsemblService {
     }
 
     public Optional<org.mskcc.oncokb.curation.vm.ensembl.EnsemblTranscript> getId(
-        ReferenceGenome referenceGenome,
+        EnsemblReferenceGenome referenceGenome,
         String id,
         boolean includeUtr,
         boolean expand
@@ -111,7 +108,7 @@ public class EnsemblService {
     }
 
     public List<org.mskcc.oncokb.curation.vm.ensembl.EnsemblTranscript> getIds(
-        ReferenceGenome referenceGenome,
+        EnsemblReferenceGenome referenceGenome,
         List<String> ids,
         boolean includeUtr,
         boolean expand
@@ -139,7 +136,7 @@ public class EnsemblService {
         return transcriptMap.values().stream().filter(val -> val != null).collect(Collectors.toList());
     }
 
-    private String getLookupPOSTUrl(ReferenceGenome referenceGenome, boolean includeUtr, boolean expand) {
+    private String getLookupPOSTUrl(EnsemblReferenceGenome referenceGenome, boolean includeUtr, boolean expand) {
         StringBuilder sb = new StringBuilder();
         sb.append("/lookup/id");
         if (includeUtr || expand) {
@@ -156,7 +153,7 @@ public class EnsemblService {
         return getEnsemblAPIUrl(referenceGenome) + sb;
     }
 
-    private String getEnsemblAPIUrl(ReferenceGenome referenceGenome) {
+    private String getEnsemblAPIUrl(EnsemblReferenceGenome referenceGenome) {
         switch (referenceGenome) {
             case GRCh37:
                 return ENSEMBL_37_API_URL;

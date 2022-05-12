@@ -2,11 +2,6 @@
   "name": "EnsemblGene",
   "fields": [
     {
-      "fieldName": "referenceGenome",
-      "fieldType": "String",
-      "fieldValidateRules": ["required"]
-    },
-    {
       "fieldName": "ensemblGeneId",
       "fieldType": "String",
       "fieldValidateRules": ["required"]
@@ -43,6 +38,12 @@
       "otherEntityName": "transcript",
       "otherEntityRelationshipName": "ensemblGene",
       "relationshipName": "transcript"
+    },
+    {
+      "relationshipType": "many-to-one",
+      "otherEntityName": "referenceGenome",
+      "otherEntityRelationshipName": "ensemblGene",
+      "relationshipName": "referenceGenome"
     },
     {
       "relationshipType": "many-to-one",
