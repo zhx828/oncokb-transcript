@@ -33,6 +33,7 @@
         <node.version>v14.17.6</node.version>
         <yarn.version>v1.22.19</yarn.version>
         <lombok.version>1.18.22</lombok.version>
+        <solr.version>1.18.22</solr.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -367,6 +368,11 @@
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.solr</groupId>
+            <artifactId>solr-solrj</artifactId>
+            <version>8.11.1</version>
         </dependency>
         <dependency>
             <groupId>com.amazonaws</groupId>

@@ -1,5 +1,6 @@
 package org.mskcc.oncokb.curation.config;
 
+import java.util.List;
 import org.mskcc.oncokb.curation.config.model.OncoKbConfig;
 import org.mskcc.oncokb.meta.model.application.AWSProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -15,6 +16,7 @@ public class ApplicationProperties extends org.mskcc.oncokb.meta.model.applicati
 
     private OncoKbConfig oncokb;
     private AWSProperties aws;
+    private SolrProperties solr;
 
     public OncoKbConfig getOncokb() {
         return oncokb;
@@ -30,5 +32,13 @@ public class ApplicationProperties extends org.mskcc.oncokb.meta.model.applicati
 
     public void setAws(AWSProperties aws) {
         this.aws = aws;
+    }
+
+    public SolrProperties getSolr() {
+        return solr;
+    }
+
+    public void setSolr(SolrProperties solr) {
+        this.solr = solr;
     }
 }
