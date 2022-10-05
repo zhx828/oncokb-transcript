@@ -67,6 +67,9 @@ public class ArticleFullTextService {
                 if (articleFullText.getHtml() != null) {
                     existingArticleFullText.setHtml(articleFullText.getHtml());
                 }
+                if (articleFullText.getPublicAccess() != null) {
+                    existingArticleFullText.setPublicAccess(articleFullText.getPublicAccess());
+                }
 
                 return existingArticleFullText;
             })

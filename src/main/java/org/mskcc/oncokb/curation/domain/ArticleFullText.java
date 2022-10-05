@@ -3,6 +3,7 @@ package org.mskcc.oncokb.curation.domain;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.io.Serializable;
 import javax.persistence.*;
+import javax.validation.constraints.*;
 
 /**
  * A ArticleFullText.
@@ -26,6 +27,10 @@ public class ArticleFullText implements Serializable {
     @Lob
     @Column(name = "html")
     private String html;
+
+    @NotNull
+    @Column(name = "public_access", nullable = false)
+    private Boolean publicAccess;
 
     @JsonIgnoreProperties(value = { "fullText" }, allowSetters = true)
     @OneToOne
@@ -73,6 +78,19 @@ public class ArticleFullText implements Serializable {
         this.html = html;
     }
 
+    public Boolean getPublicAccess() {
+        return this.publicAccess;
+    }
+
+    public ArticleFullText publicAccess(Boolean publicAccess) {
+        this.setPublicAccess(publicAccess);
+        return this;
+    }
+
+    public void setPublicAccess(Boolean publicAccess) {
+        this.publicAccess = publicAccess;
+    }
+
     public Article getArticle() {
         return this.article;
     }
@@ -112,6 +130,7 @@ public class ArticleFullText implements Serializable {
             "id=" + getId() +
             ", text='" + getText() + "'" +
             ", html='" + getHtml() + "'" +
+            ", publicAccess='" + getPublicAccess() + "'" +
             "}";
     }
 }
