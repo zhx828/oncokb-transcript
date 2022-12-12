@@ -3,6 +3,7 @@ package org.mskcc.oncokb.curation.service;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -37,10 +38,21 @@ import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.CursorMarkParams;
 import org.apache.solr.common.util.NamedList;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.mskcc.oncokb.curation.config.ApplicationProperties;
+import org.mskcc.oncokb.curation.domain.Article;
+import org.mskcc.oncokb.curation.domain.ArticleFullText;
 import org.mskcc.oncokb.curation.service.model.SolrItem;
+import org.mskcc.oncokb.curation.service.solr.ResultMap;
+import org.mskcc.oncokb.curation.service.solr.SearchResult;
+import org.mskcc.oncokb.curation.service.solr.SolrClientService;
+import org.mskcc.oncokb.curation.service.solr.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
@@ -48,657 +60,345 @@ import org.springframework.stereotype.Service;
 @Service
 public class SolrService {
 
-    public static final Logger log = LoggerFactory.getLogger(SolrService.class);
+    private static final Logger log = LoggerFactory.getLogger(SolrService.class);
 
-    private SolrClient client;
-    private ApplicationProperties applicationProperties;
-    private static int count = 0;
-    private int reloadRate = 15000;
+    private static final int PAGE_SIZE = 50;
 
-    private String defaultField;
-    private String collection;
-    private String parser = "edismax";
+    private SolrClientService solrClientService;
+    private ArticleService articleService;
+    private ArticleFullTextService articleFullTextService;
 
-    @AllArgsConstructor
-    @Getter
-    @Setter
-    public static class ResultMap {
-
-        private Map<String, Object> explainMap;
-        private SolrDocumentList docs;
-        private Map<String, Map<String, List<String>>> highlightingMap;
+    public SolrService(SolrClientService solrClientService, ArticleService articleService, ArticleFullTextService articleFullTextService) {
+        this.solrClientService = solrClientService;
+        this.articleService = articleService;
+        this.articleFullTextService = articleFullTextService;
     }
 
-    public SolrService(ApplicationProperties applicationProperties) {
-        this.applicationProperties = applicationProperties;
-        boolean cloud = this.applicationProperties.getSolr().getUrls().size() > 1;
-        if (cloud) HttpClientUtil.addRequestInterceptor(new SolrPreemptiveAuthInterceptor());
+    public void updateSolrFullTextArticles() {
+        Page<Article> page = articleService.findAll(Pageable.ofSize(PAGE_SIZE));
+        for (int i = 0; i < page.getTotalPages(); i++) {
+            log.info("On page: {}", i);
+            Page<Article> pageResult = articleService.findAll(PageRequest.of(i, PAGE_SIZE));
+            for (Article article : pageResult) {
+                if (org.apache.commons.lang3.StringUtils.isNotEmpty(article.getTitle())) {
+                    Optional<ArticleFullText> articleFullTextOptional = articleFullTextService.findByArticle(article);
 
-        this.client =
-            cloud
-                ? new CloudSolrClient.Builder(this.applicationProperties.getSolr().getUrls()).withParallelUpdates(true).build()
-                : new HttpSolrClient.Builder()
-                    .withBaseSolrUrl(this.applicationProperties.getSolr().getUrls().iterator().next())
-                    .allowCompression(true)
-                    .build();
-        this.collection = this.applicationProperties.getSolr().getCollection();
-        defaultField = "text";
-    }
+                    Map<String, List<String>> articleMap = new HashMap<>();
+                    Map<String, List<String>> extraMap = new HashMap<>();
+                    String text = this.toText(article, articleFullTextOptional.isPresent() ? articleFullTextOptional.get() : null);
+                    articleMap.put("text", Collections.singletonList(text));
+                    articleMap.put("pmid", Collections.singletonList(article.getPmid()));
 
-    public static String randomId(int length) {
-        int leftLimit = 48; // numeral '0'
-        int rightLimit = 90; // letter 'Z'
-        Random random = new Random();
-
-        return random
-            .ints(leftLimit, rightLimit + 1)
-            .filter(i -> (i <= 57 || i >= 65))
-            .limit(length)
-            .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
-            .toString();
-    }
-
-    public static String randomId() {
-        return randomId(20);
-    }
-
-    public static List<SolrItem> documentsToItems(SolrDocumentList sdl) {
-        DocumentObjectBinder binder = new DocumentObjectBinder();
-        return binder.getBeans(SolrItem.class, sdl);
-    }
-
-    @Deprecated // use paging here!
-    public SolrDocumentList getAllDocuments() throws SolrServerException, IOException {
-        SolrQuery query = new SolrQuery("*:*");
-        int maxArticles = 30000000;
-        query.setRows(maxArticles);
-        QueryResponse response = client.query("knowledge", query);
-        return response.getResults();
-    }
-
-    /**
-     * @param queryText The string with the query (e.g. "pmid:12345 AND text:BRAF")
-     * @return The list of documents that match the query.
-     * @throws IOException
-     * @throws SolrServerException
-     */
-    public SolrDocumentList findDismax(String queryText) throws IOException, SolrServerException {
-        //queryText = queryText.replace("\\*", "*"); // not needed
-        SolrQuery query = new SolrQuery();
-        query.setQuery(queryText).setStart(0).setRows(10000).setIncludeScore(true);
-        query.setParam("mm", "100%");
-        query.setParam("df", defaultField).setParam("defType", "dismax");
-        QueryResponse response = client.query(collection, query);
-        SolrDocumentList results = response.getResults();
-        if (results.size() == 0) {
-            log.info("No Solr query results found for {}", queryText);
-        }
-        return results;
-    }
-
-    public SolrDocumentList findDismax(String queryText, String fields, int nResults, String freqTerm)
-        throws IOException, SolrServerException {
-        //queryText = queryText.replace("\\*", "*"); // unescape *, dismax doesn't have wildcards! but necessary? probably not.
-        SolrQuery query = new SolrQuery();
-        query.setParam("mm", "100%");
-        query.setQuery(queryText).setFields(fields).setStart(0).setRows(nResults);
-        query.setParam("df", defaultField);
-        if (freqTerm != null && freqTerm.charAt(0) == '"' && freqTerm.substring(1).contains("\"")) query.addSort(
-            SolrQuery.SortClause.desc("termfreq(" + defaultField + ", " + freqTerm + ")")
-        ); else if (freqTerm != null) query.addSort(
-            SolrQuery.SortClause.desc("termfreq(" + defaultField + ", " + '"' + freqTerm + '"' + ")")
-        );
-        query.addSort(SolrQuery.SortClause.desc("date"));
-        query.setIncludeScore(true).setParam("defType", "dismax");
-        QueryResponse response = client.query(collection, query);
-
-        SolrDocumentList results = response.getResults();
-        if (results.size() == 0) {
-            log.info("No Solr query results found for {}", queryText);
-        }
-        return results;
-    }
-
-    public SolrDocumentList find(String queryText) throws IOException, SolrServerException {
-        SolrQuery query = new SolrQuery();
-        query.setQuery(queryText).setStart(0).setRows(10000).setIncludeScore(true);
-        //        query.setParam("mm", "100%");
-        //        query.setParam("df", defaultField).setParam("defType", getParser()); // lucene or edismax (or dismax, etc)
-        QueryResponse response = client.query(collection, query);
-        SolrDocumentList results = response.getResults();
-        if (results.size() == 0) {
-            log.info("No Solr query results found for {}", queryText);
-        }
-        return results;
-    }
-
-    public ResultMap find(String queryText, boolean highlight) throws IOException, SolrServerException {
-        SolrQuery query = new SolrQuery();
-        query.setQuery(queryText).setStart(0).setRows(10000).setIncludeScore(true);
-        if (highlight) query
-            .setHighlight(true)
-            .addHighlightField(defaultField)
-            .setHighlightSimplePre("<mark>")
-            .setHighlightSimplePost("</mark>")
-            .setHighlightFragsize(0);
-        query.setParam("mm", "100%");
-        query.setParam("df", defaultField).setParam("defType", getParser()); // lucene or edismax (or dismax, etc)
-        QueryResponse response = client.query(collection, query);
-        SolrDocumentList results = response.getResults();
-        if (results.size() == 0) {
-            log.info("No Solr query results found for {}", queryText);
-        }
-        return new ResultMap(response.getExplainMap(), results, response.getHighlighting());
-    }
-
-    public SolrDocumentList find(String queryText, String fields, int nResults, String freqTerm) throws IOException, SolrServerException {
-        SolrQuery query = new SolrQuery();
-        query.setQuery(queryText).setStart(0).setRows(nResults);
-        query.setParam("df", defaultField);
-        if (freqTerm != null && freqTerm.charAt(0) == '"' && freqTerm.substring(1).contains("\"")) {
-            query.setFields(fields, "termfreq(" + defaultField + ", " + freqTerm + ")");
-            query.addSort(SolrQuery.SortClause.desc("termfreq(" + defaultField + ", " + freqTerm + ")"));
-        } else if (freqTerm != null) {
-            query.setFields(fields, "termfreq(" + defaultField + ", " + '"' + freqTerm + '"' + ")");
-            query.addSort(SolrQuery.SortClause.desc("termfreq(" + defaultField + ", " + '"' + freqTerm + '"' + ")"));
-        } else query.setFields(fields);
-        //query.addSort(SolrQuery.SortClause.desc("date"));
-        query.setIncludeScore(true).setParam("defType", "edismax");
-        QueryResponse response = client.query(collection, query);
-
-        SolrDocumentList results = response.getResults();
-        if (results.size() == 0) {
-            log.info("No Solr query results found for {}", queryText);
-        }
-        return results;
-    }
-
-    public SolrDocumentList deepPage(String query, int rows) throws IOException, SolrServerException {
-        SolrQuery solrQuery = new SolrQuery(query)
-            .setRows(rows)
-            .setParam("df", defaultField)
-            .setParam("defType", "edismax")
-            .addSort(SolrQuery.SortClause.desc("id"))
-            .addSort(SolrQuery.SortClause.desc("score"));
-        String cursorMark = CursorMarkParams.CURSOR_MARK_START;
-        boolean done = false;
-        SolrDocumentList solrDocumentList = new SolrDocumentList();
-        while (!done) {
-            solrQuery.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
-            QueryResponse response = client.query("knowledge", solrQuery);
-            String nextCursorMark = response.getNextCursorMark();
-            solrDocumentList.addAll(response.getResults());
-            if (cursorMark.equals(nextCursorMark)) {
-                done = true;
-            }
-            cursorMark = nextCursorMark;
-        }
-        return solrDocumentList;
-    }
-
-    public SolrDocumentList findClustering(String queryText) throws IOException, SolrServerException {
-        SolrQuery query = new SolrQuery();
-        query.setQuery(queryText);
-        query.setStart(0).setRows(200).setIncludeScore(true);
-        query.setParam("qt", "/clustering");
-        //query.setParam("df", "all");
-        query.setParam("defType", "edismax"); // lucene or edismax (or dismax, etc)
-        QueryResponse response = client.query("knowledge", query);
-        if (response.getClusteringResponse() != null && response.getClusteringResponse().getClusters() != null) {
-            List<Cluster> clusters = response.getClusteringResponse().getClusters();
-            int item = 1;
-            for (Cluster c : clusters) {
-                log.info("Cluster " + item);
-                log.info(c.toString());
-                log.info(c.getLabels().toString());
-                log.info(c.getDocs().toString());
-                log.info("Subclusters:");
-                int item2 = 1;
-                if (c.getSubclusters() != null) for (Cluster c2 : c.getSubclusters()) {
-                    log.info("Subcluster " + item2);
-                    log.info(c2.toString());
-                    log.info(c2.getLabels().toString());
-                    log.info(c2.getDocs().toString());
-                    item2++;
+                    if (article.getPubDate() != null) extraMap.put("date", Collections.singletonList(article.getPubDate().toString()));
+                    extraMap.put("hasFullText", Collections.singletonList(Boolean.toString(articleFullTextOptional.isPresent())));
+                    try {
+                        SolrDocumentList sdl = solrClientService.find("id:" + article.getPmid());
+                        if (sdl.size() > 0) {
+                            for (SolrDocument doc : sdl) {
+                                solrClientService.delete((String) doc.get("id"), true);
+                            }
+                        }
+                        solrClientService.add(article.getPmid(), articleMap, extraMap);
+                    } catch (SolrServerException | IOException e) {
+                        e.printStackTrace();
+                    }
                 }
-                item++;
             }
         }
-        SolrDocumentList results = response.getResults();
-        if (results.size() == 0) {
-            log.info("No Solr query results found for {}", queryText);
-        }
-        return results;
+        log.info("Done updating Solr collection");
     }
 
-    public ResultMap queryCount(String phrase, String fq) throws IOException, SolrServerException {
-        SolrQuery query = new SolrQuery().setQuery(phrase).setParam("df", defaultField).setParam("fq", fq);
-        query.setParam("debugQuery", "true").setFields("id,pmid,pmid_supporting");
-        QueryResponse response = client.query(collection, query);
-        return new ResultMap(response.getExplainMap(), response.getResults(), null);
-    }
+    public void updateSolrSupportingInformation(int pageNumber, int pageSize) {
+        Page<FullText> fullTextList;
+        List<Map<String, List<String>>> articleMaps = new ArrayList<>();
+        List<Map<String, List<String>>> extraMaps = new ArrayList<>();
+        List<Triple> values = Collections.synchronizedList(new ArrayList<>());
+        List<String> newIds = new ArrayList<>();
+        List<String> deletedIds = Collections.synchronizedList(new ArrayList<>());
+        do {
+            fullTextList = fullTextRepository.findAllSupplementary(PageRequest.of(pageNumber++, pageSize)); //fullTextRepository.findAll().stream().filter(f -> f.getPmId().contains("S")).sorted(Comparator.comparing(FullText::getPmId)).collect(Collectors.toList());
+            List<FullText> fullTextsS = fullTextList.getContent();
+            log.info("{} supporting text (PDF/DOC/DOCX) items to look at", fullTextsS.size());
+            fullTextsS
+                .parallelStream()
+                .forEach(ft -> {
+                    Article a = articleRepository.findByPmId(ft.getPmId().substring(0, ft.getPmId().indexOf("S")));
+                    boolean update = false;
+                    if (
+                        a.getSupportingText() != null &&
+                        (a.getSupportingText().endsWith(ft.getPmId()) || a.getSupportingText().contains(ft.getPmId() + ","))
+                    ) {
+                        //log.info("{} already contained in article {} supportingText field", ft.getPmId(), a.getPmId());
+                    } else if (a.getSupportingText() != null && a.getSupportingText().length() > 0) {
+                        if (a.getSupportingText().endsWith(",")) a.setSupportingText(
+                            a.getSupportingText() + ft.getPmId()
+                        ); else a.setSupportingText(a.getSupportingText() + "," + ft.getPmId());
+                        update = true;
+                    } else {
+                        a.setSupportingText(ft.getPmId());
+                        update = true;
+                    }
+                    if (update) articleRepository.save(a);
+                    Map<String, List<String>> articleMap = new HashMap<>();
+                    Map<String, List<String>> extraMap = new HashMap<>();
+                    articleMap.put("text", Collections.singletonList(ft.getTextEntry()));
+                    articleMap.put("authors", Collections.singletonList(a.getAuthors()));
+                    articleMap.put("pmid", Collections.singletonList(a.getPmId()));
+                    articleMap.put("pmid_supporting", Collections.singletonList(ft.getPmId()));
+                    if (a.getPublicationDate() != null) extraMap.put(
+                        "date",
+                        Collections.singletonList(a.getPublicationDate().toDateTime(DateTimeZone.UTC).toString())
+                    ); else if (a.getPubDate() != null) extraMap.put(
+                        "date",
+                        Collections.singletonList(a.getPubDate().toDateTime(DateTimeZone.UTC).toString())
+                    );
+                    extraMap.put("hasFullText", Collections.singletonList("true"));
+                    String newId =
+                        Integer.toHexString(articleMap.hashCode()) +
+                        (ft.getPmId().length() > 3 ? ft.getPmId().substring(ft.getPmId().length() - 3) : ft.getPmId());
 
-    public ResultMap queryHighlightFragments(String queryText, int nResults) throws IOException, SolrServerException {
-        SolrQuery query = new SolrQuery();
-        query.setQuery(queryText).setFields("id,text,pmid,pmid_supporting");
-        query.setHighlight(true).addHighlightField(defaultField).setHighlightSimplePre("<mark>").setHighlightSimplePost("</mark>");
-        query.setIncludeScore(true); //.setParam("debugQuery", "true");
-        query.setStart(0).setRows(nResults).setParam("defType", "edismax").setParam("df", defaultField);
-        QueryResponse response = client.query(collection, query);
-        SolrDocumentList results = response.getResults();
-        if (results.size() == 0) {
-            log.info("No Solr query results found for {}", query);
-            return null;
-        }
-        return new ResultMap(response.getExplainMap(), results, response.getHighlighting());
-    }
-
-    public ResultMap queryHighlight(String queryText, int nResults) throws IOException, SolrServerException {
-        SolrQuery query = new SolrQuery();
-        query.setQuery(queryText).setFields("id,pmid,pmid_supporting");
-        query
-            .setHighlight(true)
-            .addHighlightField(defaultField)
-            .setHighlightSimplePre("<mark>")
-            .setHighlightSimplePost("</mark>")
-            .setHighlightFragsize(0);
-        query.setIncludeScore(true); //.setParam("debugQuery", "true");
-        query.setStart(0).setRows(nResults).setParam("defType", "edismax").setParam("df", defaultField);
-        QueryResponse response = client.query(collection, query);
-        SolrDocumentList results = response.getResults();
-        if (results.size() == 0) {
-            log.info("No Solr query results found for {}", query);
-            return null;
-        }
-        return new ResultMap(response.getExplainMap(), results, response.getHighlighting());
-    }
-
-    public ResultMap queryHighlight(String queryText, String fq, int nResults) throws IOException, SolrServerException {
-        SolrQuery query = new SolrQuery();
-        query.setQuery(queryText).setFields("id,pmid,pmid_supporting");
-        query
-            .setHighlight(true)
-            .addHighlightField(defaultField)
-            .setHighlightSimplePre("<mark>")
-            .setHighlightSimplePost("</mark>")
-            .setHighlightFragsize(0);
-        query.setIncludeScore(true).setParam("fq", fq); //.setParam("debugQuery", "true")
-        query.setStart(0).setRows(nResults).setParam("defType", "edismax").setParam("df", defaultField); // WAS lucene!!!!!
-        QueryResponse response = client.query(collection, query);
-        SolrDocumentList results = response.getResults();
-        if (results.size() == 0) {
-            log.info("No Solr query results found for {}", query);
-            return null;
-        }
-        return new ResultMap(response.getExplainMap(), results, response.getHighlighting());
-    }
-
-    public SolrDocument getDocument(String id) throws SolrServerException, IOException {
-        return client.getById(collection, id);
-    }
-
-    public SolrDocumentList getDocuments(List<String> ids) throws SolrServerException, IOException {
-        return client.getById(collection, ids);
-    }
-
-    public boolean exists(String id) throws SolrServerException, IOException {
-        return getDocument(id) != null;
-    }
-
-    public UpdateResponse add(String id, String title, String authors, String fileUrl, List<String> categories, String content)
-        throws SolrServerException, IOException {
-        SolrInputDocument inputDoc = new SolrInputDocument();
-        inputDoc.addField("id", id);
-        //        inputDoc.addField("attr_pdf_docinfo_title", Arrays.asList(title));
-        inputDoc.addField("attr_author", Arrays.asList(authors));
-        inputDoc.addField("attr_fileurl", Arrays.asList(fileUrl));
-        //        if (categories != null) inputDoc.addField("categories", StringUtils.join(categories, ","));
-        inputDoc.addField("attr_content", Arrays.asList(content));
-
-        UpdateResponse response = client.add(collection, inputDoc);
-
-        if (++count % reloadRate == 0) {
-            CollectionAdminRequest.reloadCollection(collection).process(client);
-        }
-        return response;
-    }
-
-    public UpdateResponse addItems(List<Map<String, Object>> baseValues) throws SolrServerException, IOException {
-        List<SolrInputDocument> inputDocs = new ArrayList<>();
-        for (int i = 0; i < baseValues.size(); i++) {
-            SolrInputDocument inputDoc = new SolrInputDocument();
-            String id = Integer.toHexString(baseValues.get(i).hashCode());
-            inputDoc.addField("id", id);
-            //if (exists(collection, id)) {
-            //    log.error("ID {} already exists in Solr collection", id);
-            //    return null;
-            //}
-            for (String key : baseValues.get(i).keySet()) {
-                inputDoc.addField(key, baseValues.get(i).get(key));
+                    try {
+                        SolrDocumentList sdl = this.find("pmid_supporting:" + ft.getPmId());
+                        if (sdl.size() > 0) {
+                            for (SolrDocument doc : sdl) {
+                                deletedIds.add((String) doc.get("id"));
+                            }
+                        }
+                        values.add(new Triple(articleMap, extraMap, newId));
+                    } catch (IOException | SolrServerException e) {
+                        log.error(e.getMessage());
+                    }
+                });
+            log.info("Sending batch to Solr addUpdateDeleteMany() with size {}", values.size());
+            try {
+                if (values.size() > 0) {
+                    values.forEach(t -> {
+                        articleMaps.add(t.articleMap);
+                        extraMaps.add(t.extraMap);
+                        newIds.add(t.newId);
+                    });
+                    values.clear();
+                    solrClientTool.addUpdateDeleteMany(this.collection, articleMaps, extraMaps, newIds, deletedIds);
+                } else if (deletedIds.size() > 0) {
+                    log.info("Nothing to add but {} items to delete", deletedIds.size());
+                    solrClientTool.deleteMany(this.collection, deletedIds);
+                }
+            } catch (SolrServerException | IOException e) {
+                log.error("SolrClientTool.addUpdateDeleteMany/deleteMany: {}", e.getMessage());
+                e.printStackTrace();
             }
-            inputDocs.add(inputDoc);
-        }
-        UpdateResponse response = client.add(collection, inputDocs);
-        client.commit(collection);
-        return response;
+            newIds.clear();
+            deletedIds.clear();
+            articleMaps.clear();
+            extraMaps.clear();
+        } while (fullTextList.hasNext());
     }
 
-    public UpdateResponse addItem(Map<String, Object> baseValues, Map<String, Object> appendValues)
-        throws SolrServerException, IOException {
-        SolrInputDocument inputDoc = new SolrInputDocument();
-        String id = Integer.toHexString(baseValues.hashCode());
-        inputDoc.addField("id", id);
-        if (exists(id)) {
-            log.error("ID {} already exists in Solr collection", id);
-            return null;
-        }
-        for (String key : baseValues.keySet()) {
-            inputDoc.addField(key, baseValues.get(key));
-        }
-        if (appendValues != null) for (String key : appendValues.keySet()) {
-            inputDoc.addField(key, appendValues.get(key));
-        }
-        UpdateResponse response = client.add(collection, inputDoc);
-        if (++count % reloadRate == 0) client.commit(collection);
-        return response;
+    public void updateSolrSupportingInformation() {
+        updateSolrSupportingInformation(0, 3000);
     }
 
-    public UpdateResponse addItem(Map<String, Object> baseValues) throws SolrServerException, IOException {
-        return addItem(baseValues, null);
-    }
-
-    public void commit() throws SolrServerException, IOException {
-        client.commit(this.collection);
-    }
-
-    public void commit(String collection) throws SolrServerException, IOException {
-        client.commit(collection);
-    }
-
-    public UpdateResponse add(Map<String, List<String>> properties, Map<String, List<String>> append)
-        throws SolrServerException, IOException {
-        SolrInputDocument inputDoc = new SolrInputDocument();
-        String pmid = properties.get("pmid").get(0);
-        String id = Integer.toHexString(properties.hashCode()) + (pmid.length() > 3 ? pmid.substring(pmid.length() - 3) : pmid);
-        inputDoc.addField("id", id);
-        if (exists(id)) {
-            log.error("ID {} already exists in Solr collection", id);
-            return null;
+    public void addArticle(String pmid) {
+        Article a = articleRepository.findByPmId(pmid);
+        if (a == null) {
+            log.error("Cannot add to Solr collection: No article with PMID {} exists", pmid);
+            return;
         }
-        for (String key : properties.keySet()) {
-            inputDoc.addField(key, properties.get(key));
-        }
-        for (String key : append.keySet()) {
-            inputDoc.addField(key, append.get(key));
-        }
-        UpdateResponse response = client.add(collection, inputDoc);
-        //client.commit(collection);
-        if (++count % reloadRate == 0) client.commit(collection);
-
-        return response;
-    }
-
-    public UpdateResponse update(Map<String, List<String>> properties, Map<String, List<String>> append)
-        throws SolrServerException, IOException {
-        SolrInputDocument inputDoc = new SolrInputDocument();
-        String pmid = properties.get("pmid").get(0);
-        String id = Integer.toHexString(properties.hashCode()) + (pmid.length() > 3 ? pmid.substring(pmid.length() - 3) : pmid);
-        inputDoc.addField("id", id);
-        for (String key : properties.keySet()) {
-            inputDoc.addField(key, properties.get(key));
-        }
-        for (String key : append.keySet()) {
-            inputDoc.addField(key, append.get(key));
-        }
-        UpdateResponse response = client.add(collection, inputDoc);
-        if (++count % reloadRate == 0) client.commit(collection);
-
-        return response;
-    }
-
-    public UpdateResponse addUpdateMany(
-        List<String> id,
-        List<String> title,
-        List<String> authors,
-        List<String> fileUrl,
-        List<List<String>> categories,
-        List<String> content
-    ) throws SolrServerException, IOException {
-        List<SolrInputDocument> inputDocuments = new ArrayList<>();
-        for (int i = 0; i < id.size(); i++) {
-            SolrInputDocument inputDoc = new SolrInputDocument();
-            inputDoc.addField("id", id.get(i));
-            inputDoc.addField("attr_pdf_docinfo_title", Arrays.asList(title.get(i)));
-            inputDoc.addField("attr_author", Arrays.asList(authors.get(i)));
-            inputDoc.addField("attr_fileurl", Arrays.asList(fileUrl.get(i)));
-            if (categories != null) inputDoc.addField("categories", StringUtils.join(categories.get(i), ","));
-            inputDoc.addField("attr_content", Arrays.asList(content.get(i)));
-            inputDocuments.add(inputDoc);
-        }
-        UpdateResponse response = client.add(collection, inputDocuments);
-        client.commit(collection);
-        return response;
-    }
-
-    public UpdateResponse addUpdateMany(List<Map<String, List<String>>> properties, List<Map<String, List<String>>> append)
-        throws SolrServerException, IOException {
-        // sanity check, properties and appended items should be the same length!
-        if (properties.size() != append.size()) return null;
-        List<SolrInputDocument> inputDocs = new ArrayList<>();
-        for (int i = 0; i < properties.size(); i++) {
-            Map<String, List<String>> map = properties.get(i);
-            SolrInputDocument inputDoc = new SolrInputDocument();
-            String pmid = map.get("pmid").get(0);
-            String id = Integer.toHexString(map.hashCode()) + (pmid.length() > 3 ? pmid.substring(pmid.length() - 3) : pmid);
-            inputDoc.addField("id", id);
-            for (String key : map.keySet()) {
-                inputDoc.addField(key, map.get(key));
-            }
-            for (String key : append.get(i).keySet()) {
-                inputDoc.addField(key, append.get(i).get(key));
-            }
-            inputDocs.add(inputDoc);
-        }
-        UpdateResponse response = client.add(collection, inputDocs);
-        client.commit(collection);
-
-        return response;
-    }
-
-    public UpdateResponse addUpdateDeleteMany(
-        List<Map<String, List<String>>> properties,
-        List<Map<String, List<String>>> append,
-        List<String> newIds,
-        List<String> deleteIds
-    ) throws SolrServerException, IOException {
-        // sanity check, properties and appended items should be the same length!
-        if (properties.size() != append.size()) return null;
-        List<SolrInputDocument> inputDocs = new ArrayList<>();
-        for (int i = 0; i < properties.size(); i++) {
-            Map<String, List<String>> map = properties.get(i);
-            SolrInputDocument inputDoc = new SolrInputDocument();
-            inputDoc.addField("id", newIds.get(i));
-            for (String key : map.keySet()) {
-                inputDoc.addField(key, map.get(key));
-            }
-            for (String key : append.get(i).keySet()) {
-                inputDoc.addField(key, append.get(i).get(key));
-            }
-            inputDocs.add(inputDoc);
-        }
-        if (deleteIds.size() > 0) client.deleteById(collection, deleteIds);
-        UpdateResponse response = client.add(collection, inputDocs);
-        client.commit(collection);
-        return response;
-    }
-
-    public UpdateResponse add(Map<String, List<String>> properties) throws SolrServerException, IOException {
-        SolrInputDocument inputDoc = new SolrInputDocument();
-        String pmid = properties.get("pmid").get(0);
-        String id = Integer.toHexString(properties.hashCode()) + (pmid.length() > 3 ? pmid.substring(pmid.length() - 3) : pmid);
-        inputDoc.addField("id", id);
-        if (exists(id)) return null;
-        for (String key : properties.keySet()) {
-            inputDoc.addField(key, properties.get(key));
-        }
-        UpdateResponse response = client.add(collection, inputDoc);
-        if (++count % reloadRate == 0) CollectionAdminRequest.reloadCollection(collection).process(client);
-        return response;
-    }
-
-    // ???
-    public NamedList<Object> extract(String id, String name, String URL, List<String> categories, File file, String contentType)
-        throws SolrServerException, IOException {
-        ContentStreamUpdateRequest update = new ContentStreamUpdateRequest("/$core/update/extract");
-        String fullUrl = file.toURI().toURL().toExternalForm();
-        if (URL != null && !URL.equals("")) fullUrl = URL;
-        update.addFile(file, contentType);
-        update.setParam("id", id);
-        update.setParam("literal.id", id);
-        update.setParam("name", name);
-        update.setParam("literal.name", name);
-        update.setParam("fileUrl", fullUrl);
-        update.setParam("literal.fileUrl", fullUrl);
-        update.setParam("categories", StringUtils.join(categories, ","));
-        update.setParam("literal.categories", StringUtils.join(categories, ","));
-        update.setParam("uprefix", "attr_");
-        update.setParam("fmap.content", "attr_content");
-        update.setAction(AbstractUpdateRequest.ACTION.COMMIT, true, true);
-        if (++count % reloadRate == 0) CollectionAdminRequest.reloadCollection(collection).process(client);
-        return client.request(update);
-    }
-
-    public void refreshCollection(String collection) {
+        Map<String, List<String>> articleMap = new HashMap<>();
+        Map<String, List<String>> extraMap = new HashMap<>();
+        String text = Article.toText(a);
+        articleMap.put("text", Collections.singletonList(text));
+        articleMap.put("pmid", Collections.singletonList(a.getPmId()));
+        a.setSolrId(
+            Integer.toHexString(articleMap.hashCode()) +
+            (a.getPmId().length() > 3 ? a.getPmId().substring(a.getPmId().length() - 3) : a.getPmId())
+        );
+        if (a.getPublicationDate() != null) extraMap.put(
+            "date",
+            Collections.singletonList(a.getPublicationDate().toDateTime(DateTimeZone.UTC).toString())
+        ); else if (a.getPubDate() != null) extraMap.put(
+            "date",
+            Collections.singletonList(a.getPubDate().toDateTime(DateTimeZone.UTC).toString())
+        );
+        if (a.getFulltext() == null) extraMap.put("hasFullText", Collections.singletonList("false")); else extraMap.put(
+            "hasFullText",
+            Collections.singletonList("true")
+        );
         try {
-            log.info("Attempting to reload the Solr collection");
-            CollectionAdminRequest.reloadCollection(collection).process(client);
-        } catch (IOException | SolrServerException e) {
+            SolrDocumentList sdl = this.find("pmid:" + a.getPmId());
+            if (sdl.size() > 0) {
+                for (SolrDocument doc : sdl) {
+                    solrClientTool.delete(this.collection, (String) doc.get("id"), true);
+                }
+            }
+            solrClientTool.add(this.collection, articleMap, extraMap);
+        } catch (SolrServerException | IOException e) {
             e.printStackTrace();
         }
     }
 
-    public UpdateResponse deleteMany(List<String> deleteIds) throws SolrServerException, IOException {
-        if (deleteIds != null && deleteIds.size() > 0) return client.deleteById(collection, deleteIds);
-        return null;
-    }
-
-    public UpdateResponse deleteAll() throws SolrServerException, IOException {
-        return client.deleteByQuery("*:*");
-    }
-
-    public UpdateResponse delete(String id) throws SolrServerException, IOException {
-        UpdateResponse response = client.deleteById(collection, id);
-        if (++count % reloadRate == 0) client.commit(collection);
-
-        return response;
-    }
-
-    public UpdateResponse delete(String id, boolean commit) throws SolrServerException, IOException {
-        UpdateResponse response = client.deleteById(collection, id);
-        if (commit) client.commit(collection);
-        return response;
-    }
-
-    public String getDefaultField() {
-        return defaultField;
-    }
-
-    public void setDefaultField(String defaultField) {
-        this.defaultField = defaultField;
-    }
-
-    public int getReloadRate() {
-        return reloadRate;
-    }
-
-    public void setReloadRate(int reloadRate) {
-        this.reloadRate = reloadRate;
-    }
-
-    public String getParser() {
-        return parser;
-    }
-
-    public void setParser(String parser) {
-        this.parser = parser;
-    }
-
-    public static String escape(String s) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            // These characters are part of the query syntax and must be escaped
-            if (
-                c == '\\' ||
-                c == '+' ||
-                c == '-' ||
-                c == '!' ||
-                c == '(' ||
-                c == ')' ||
-                c == ':' ||
-                c == '^' ||
-                c == '[' ||
-                c == ']' ||
-                c == '\"' ||
-                c == '{' ||
-                c == '}' ||
-                c == '~' ||
-                c == '*' ||
-                c == '?' ||
-                c == '|' ||
-                c == '&' ||
-                c == ';' ||
-                c == '/' ||
-                Character.isWhitespace(c)
-            ) {
-                sb.append('\\');
+    public SearchResult searchSolr(
+        int limit,
+        List<String> genes,
+        List<List<String>> geneSynonyms,
+        List<String> mutations,
+        List<List<String>> mutationSynonyms,
+        List<String> drugs,
+        List<List<String>> drugSynonyms,
+        List<String> cancers,
+        List<List<String>> cancerSynonyms,
+        List<String> keywords,
+        String authors,
+        DateTime after
+    ) {
+        List<String> terms = new ArrayList<>();
+        String query = buildSearchExpression(
+            terms,
+            genes,
+            geneSynonyms,
+            mutations,
+            mutationSynonyms,
+            drugs,
+            drugSynonyms,
+            cancers,
+            cancerSynonyms,
+            keywords,
+            authors,
+            after
+        );
+        log.info(query);
+        String freqTerm = null;
+        if (terms.size() == 1) freqTerm = escape(terms.get(0)); else if (keywords != null && keywords.size() == 1) freqTerm =
+            escape(terms.get(0)); else {
+            if (mutations != null && mutations.size() > 0) freqTerm = escape(mutations.get(0)); else freqTerm = escape(terms.get(0));
+        }
+        try {
+            SolrDocumentList result;
+            if (query.contains("*")) solrClientTool.setDefaultField("text_ws"); else solrClientTool.setDefaultField("text");
+            result = this.find(query, "pmid,pmid_supporting,date,score,text", limit, freqTerm);
+            log.info(result.toString());
+            List<String> pmIds = new ArrayList<>(result.size());
+            List<Float> scores = new ArrayList<>(result.size());
+            for (SolrDocument item : result) {
+                List<Long> values = (ArrayList<Long>) (item.getFieldValue("pmid"));
+                if (item.getFieldValue("pmid_supporting") != null) {
+                    List<String> supportingPMID = (ArrayList<String>) (item.getFieldValue("pmid_supporting"));
+                    pmIds.add(supportingPMID.get(0));
+                } else pmIds.add(values.get(0) + "");
+                scores.add((Float) (item.getFieldValue("score")));
             }
-            sb.append(c);
+            return new SearchResult(result, pmIds, scores);
+        } catch (IOException | SolrServerException e) {
+            log.error(e.getMessage());
+            return null;
+        }
+    }
+
+    public SearchResult searchSolr(int limit, String searchTerm, DateTime after, boolean rank) {
+        try {
+            SolrDocumentList result;
+            solrClientTool.setDefaultField("text");
+            if (!searchTerm.contains(":")) result =
+                this.find(searchTerm, "pmid,pmid_supporting", limit, rank ? searchTerm : null); else result =
+                this.find(searchTerm, rank ? "pmid,pmid_supporting" : "pmid,pmid_supporting,text", limit, searchTerm);
+            log.info(result.toString());
+            List<String> pmIds = new ArrayList<>(result.size());
+            List<Float> scores = new ArrayList<>(result.size());
+            for (SolrDocument item : result) {
+                //log.info(item.getFieldValue("pmid").getClass().getSimpleName());
+                List<Long> values = (ArrayList<Long>) (item.getFieldValue("pmid"));
+                if (item.getFieldValue("pmid_supporting") != null) {
+                    List<String> supportingPMID = (ArrayList<String>) (item.getFieldValue("pmid_supporting"));
+                    pmIds.add(supportingPMID.get(0));
+                } else pmIds.add(values.get(0) + "");
+                scores.add((Float) (item.getFieldValue("score")));
+            }
+            return new SearchResult(result, pmIds, scores);
+        } catch (IOException | SolrServerException e) {
+            log.error(e.getMessage());
+            return null;
+        }
+    }
+
+    public SolrDocument findArticle(String pmid) {
+        boolean supplementary = pmid.contains("S");
+        try {
+            SolrDocumentList sdl = this.find((supplementary ? "pmid_supporting:" : "-pmid_supporting:* AND pmid:") + '"' + pmid + '"');
+            if (sdl.size() == 1) {
+                return sdl.get(0);
+            }
+            if (sdl.size() == 0) {
+                log.error("No SolrDocument found for PMID {}, trying to create", pmid);
+                addArticle(pmid);
+                this.refreshCollection(this.collection);
+                sdl = this.find((supplementary ? "pmid_supporting:" : "-pmid_supporting:* AND pmid:") + '"' + pmid + '"');
+                if (sdl.size() == 1) return sdl.get(0);
+                log.error("Still could not find the record in collection");
+                return null;
+            } else { // one or more duplicates! delete one.
+                Long max = 0L;
+                SolrDocument maxDoc = sdl.get(0);
+                for (int i = 0; i < sdl.size(); i++) {
+                    SolrDocument doc = sdl.get(i);
+                    Long d = (Long) doc.get("_version_");
+                    if (d > max) {
+                        max = d;
+                        maxDoc = doc;
+                    }
+                }
+                for (int i = 0; i < sdl.size(); i++) {
+                    SolrDocument doc = sdl.get(i);
+                    Long d = (Long) doc.get("_version_");
+                    if (d < max) {
+                        log.info("Duplicate Solr document: Deleting result {}", i);
+                        this.delete((String) doc.get("id"), true);
+                    }
+                }
+                return maxDoc;
+            }
+        } catch (IOException | SolrServerException e) {
+            log.error(e.getMessage());
+            return null;
+        }
+    }
+
+    public boolean deleteArticle(String pmid) {
+        boolean supplementary = pmid.contains("S");
+        try {
+            SolrDocumentList sdl = this.find((supplementary ? "pmid_supporting:" : "-pmid_supporting:* AND pmid:") + '"' + pmid + '"');
+            log.info("{} document(s) to delete", sdl.size());
+            if (sdl.size() == 0) return false;
+            for (SolrDocument doc : sdl) {
+                Collection<String> fields = doc.getFieldNames();
+                if (!supplementary && fields.contains("pmid_supporting")) continue;
+                String id = (String) doc.get("id");
+                solrClientTool.delete(this.collection, id);
+                //System.out.println(doc);
+            }
+        } catch (IOException | SolrServerException e) {
+            log.error(e.getMessage());
+        }
+        return true;
+    }
+
+    public String getText(SolrDocument item) {
+        if (item.get("text") instanceof List) return ((List<String>) item.get("text")).get(0); else return (String) item.get("text");
+    }
+
+    public static String toText(Article article, ArticleFullText articleFullText) {
+        StringBuilder sb = new StringBuilder(50000);
+        sb.append(" {!title} ");
+        sb.append(article.getTitle());
+        if (article.getPubAbstract() != null) {
+            sb.append(" {!abstract} ");
+            sb.append(article.getPubAbstract());
+        }
+        if (articleFullText != null) {
+            sb.append(" {!fulltext} ");
+            if (articleFullText.getText() != null) {
+                sb.append(articleFullText.getText());
+            }
         }
         return sb.toString();
-    }
-
-    public static String quote(String s) {
-        return "\"" + s + "\"";
-    }
-
-    static class SolrPreemptiveAuthInterceptor implements HttpRequestInterceptor {
-
-        //final static Logger log = LoggerFactory.getLogger(SolrPreemptiveAuthInterceptor.class);
-
-        @Override
-        public void process(HttpRequest request, HttpContext context) throws HttpException, IOException {
-            AuthState authState = (AuthState) context.getAttribute(HttpClientContext.TARGET_AUTH_STATE);
-            // If no auth scheme available yet, try to initialize it preemptively
-            if (authState.getAuthScheme() == null) {
-                //log.info("No AuthState: set Basic Auth");
-
-                HttpHost targetHost = (HttpHost) context.getAttribute(HttpCoreContext.HTTP_TARGET_HOST);
-                AuthScope authScope = new AuthScope(targetHost.getHostName(), targetHost.getPort());
-
-                CredentialsProvider credsProvider = (CredentialsProvider) context.getAttribute(HttpClientContext.CREDS_PROVIDER);
-
-                Credentials creds = credsProvider.getCredentials(authScope);
-                if (creds == null) {
-                    //log.info("No Basic Auth credentials: add them");
-                    creds = getCredentials(authScope);
-                    credsProvider.setCredentials(authScope, creds);
-                    context.setAttribute(HttpClientContext.CREDS_PROVIDER, credsProvider);
-                }
-                authState.update(new BasicScheme(), creds);
-            }
-        }
-
-        private Credentials getCredentials(AuthScope authScope) {
-            String user = System.getenv("solrUsername");
-            String password = System.getenv("solrPassword");
-            UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(user, password);
-
-            CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-            credentialsProvider.setCredentials(authScope, credentials);
-            //log.info("Creating Basic Auth credentials for user {}", user);
-
-            return credentialsProvider.getCredentials(authScope);
-        }
     }
 }

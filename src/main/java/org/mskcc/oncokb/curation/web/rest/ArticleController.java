@@ -1,13 +1,20 @@
 package org.mskcc.oncokb.curation.web.rest;
 
 import java.io.FileNotFoundException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.IOException;
+import java.time.ZoneId;
+import java.util.*;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrDocumentList;
+import org.joda.time.DateTimeZone;
 import org.mskcc.oncokb.curation.domain.Article;
+import org.mskcc.oncokb.curation.domain.ArticleFullText;
 import org.mskcc.oncokb.curation.importer.PubMedImporter;
+import org.mskcc.oncokb.curation.service.ArticleFullTextService;
 import org.mskcc.oncokb.curation.service.ArticleService;
-import org.mskcc.oncokb.curation.util.FileUtils;
+import org.mskcc.oncokb.curation.service.SolrService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -25,10 +32,20 @@ public class ArticleController {
     private final PubMedImporter pubMedImporter;
 
     private final ArticleService articleService;
+    private final ArticleFullTextService articleFullTextService;
 
-    public ArticleController(PubMedImporter pubMedImporter, ArticleService articleService) {
+    private final SolrService solrService;
+
+    public ArticleController(
+        PubMedImporter pubMedImporter,
+        ArticleService articleService,
+        ArticleFullTextService articleFullTextService,
+        SolrService solrService
+    ) {
         this.pubMedImporter = pubMedImporter;
         this.articleService = articleService;
+        this.articleFullTextService = articleFullTextService;
+        this.solrService = solrService;
     }
 
     @GetMapping("/articles/import")
@@ -50,6 +67,13 @@ public class ArticleController {
                 }
             }
         }
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/articles/solr-index-all")
+    public ResponseEntity<Void> solrIndexAll() throws FileNotFoundException {
+        final int PAGE_SIZE = 50;
+
         return ResponseEntity.ok().build();
     }
 
