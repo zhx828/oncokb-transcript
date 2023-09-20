@@ -81,6 +81,7 @@ import FirebaseStore from './firebase/firebase.store';
 import FdaDrugStore from 'app/entities/fda-drug/fda-drug.store';
 import { FirebaseGeneStore } from './firebase/firebase.gene.store';
 import { FirebaseMetaStore } from './firebase/firebase.meta.store';
+import { FirebaseDrugsStore } from 'app/stores/firebase/firebase.drugs.store';
 /* jhipster-needle-add-store-import - JHipster will add store here */
 
 export interface IRootStore {
@@ -116,6 +117,7 @@ export interface IRootStore {
   readonly firebaseStore: FirebaseStore;
   readonly firebaseGeneStore: FirebaseGeneStore;
   readonly firebaseMetaStore: FirebaseMetaStore;
+  readonly firebaseDrugsStore: FirebaseDrugsStore;
 }
 
 export function createStores(history: History): IRootStore {
@@ -153,5 +155,6 @@ export function createStores(history: History): IRootStore {
   rootStore.firebaseStore = new FirebaseStore(rootStore);
   rootStore.firebaseGeneStore = new FirebaseGeneStore(rootStore);
   rootStore.firebaseMetaStore = new FirebaseMetaStore(rootStore);
+  rootStore.firebaseDrugsStore = new FirebaseDrugsStore(rootStore);
   return rootStore;
 }
