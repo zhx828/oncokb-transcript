@@ -15,7 +15,7 @@ const convertEntityName = (entityPathName: string) => {
     ENTITY_ROUTE_TO_TITLE_MAPPING[entityTitleKey] ||
     entityPathName
       .split('-')
-      .map(name => _.capitalize(name))
+      // .map(name => _.capitalize(name))
       .join(' ')
   );
 };
