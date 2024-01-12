@@ -2,12 +2,15 @@ package org.mskcc.oncokb.curation.importer;
 
 import static org.mskcc.oncokb.curation.util.FileUtils.readTrimmedLinesStream;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
+import jodd.util.StringUtil;
 import org.apache.commons.lang3.StringUtils;
+import org.mskcc.oncokb.curation.config.application.ApplicationProperties;
 import org.mskcc.oncokb.curation.domain.Flag;
 import org.mskcc.oncokb.curation.domain.Gene;
 import org.mskcc.oncokb.curation.domain.Synonym;
@@ -31,11 +34,19 @@ public class GeneImporter {
     private final String GENE_VERSION = "v4";
     private final String GENE_VERSION_DATE = "2023-04-11"; // see allowed format https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html
 
+    final CurationDataService curationDataService;
     final InfoService infoService;
     final GeneService geneService;
     final FlagService flagService;
 
-    public GeneImporter(InfoService infoService, GeneService geneService, FlagService flagService) {
+    public GeneImporter(
+        ApplicationProperties applicationProperties,
+        CurationDataService curationDataService,
+        InfoService infoService,
+        GeneService geneService,
+        FlagService flagService
+    ) {
+        this.curationDataService = curationDataService;
         this.infoService = infoService;
         this.geneService = geneService;
         this.flagService = flagService;
@@ -109,6 +120,102 @@ public class GeneImporter {
         }
 
         this.infoService.updateInfo(InfoType.GENE_VERSION, GENE_VERSION, GENE_VERSION_DATE);
+    }
+
+    public void upgradePortalGeneVersion(String newGeneVersionFolderName) {
+        String newGeneVersionFolderDict = curationDataService.getDataDirectory() + "/" + newGeneVersionFolderName;
+        String UPDATE_FILE_PATH = newGeneVersionFolderDict + "/gene-updates.md";
+
+        try {
+            List<String> readmeFileLines = readTrimmedLinesStream(new FileInputStream(UPDATE_FILE_PATH));
+            deleteGeneWhileUpgrading(readmeFileLines);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        this.infoService.updateInfo(InfoType.GENE_VERSION, GENE_VERSION, GENE_VERSION_DATE);
+    }
+
+    private void deleteGeneWhileUpgrading(List<String> lines) {
+        List<String> genesRemovedLines = findGeneUpdateSectionLines(lines, "Genes Removed");
+        if (genesRemovedLines.size() > 0) {
+            log.warn("Found genes that have been removed");
+            for (String line : genesRemovedLines) {
+                String[] cells = line.split("\t");
+                if (cells.length >= 2) {
+                    String hugoSymbol = cells[0];
+                    String entrezGeneId = cells[1];
+                    if (StringUtil.isNotEmpty(entrezGeneId)) {
+                        Optional<Gene> geneOptional = geneService.findGeneByEntrezGeneId(Integer.parseInt(entrezGeneId));
+                        if (geneOptional.isEmpty()) {
+                            log.error("Cannot find the gene {}", line);
+                        } else {
+                            Gene gene = geneOptional.get();
+                            if (!gene.getHugoSymbol().equalsIgnoreCase(hugoSymbol)) {
+                                log.warn("Gene hugo symbol does not match, New: {}, Old: {}", hugoSymbol, gene.getHugoSymbol());
+                            }
+                            geneService.delete(gene.getId());
+                            log.info("Deleted gene {} {}", entrezGeneId, hugoSymbol);
+                        }
+                    } else {
+                        log.error("Gene that been removed does not have an entrez gene id {}", line);
+                    }
+                }
+            }
+        }
+    }
+
+    private void updateGeneHugoSymbolWhileUpgrading(List<String> lines) {
+        List<String> hugoSymbolChangedLines = findGeneUpdateSectionLines(lines, "Hugo Symbol Update");
+        if (hugoSymbolChangedLines.size() > 0) {
+            log.warn("Found genes that have been removed");
+            for (String line : hugoSymbolChangedLines) {
+                String[] cells = line.split("\t");
+                if (cells.length >= 2) {
+                    String hugoSymbol = cells[0];
+                    String entrezGeneId = cells[1];
+                    if (StringUtil.isNotEmpty(entrezGeneId)) {
+                        Optional<Gene> geneOptional = geneService.findGeneByEntrezGeneId(Integer.parseInt(entrezGeneId));
+                        if (geneOptional.isEmpty()) {
+                            log.error("Cannot find the gene {}", line);
+                        } else {
+                            Gene gene = geneOptional.get();
+                            if (!gene.getHugoSymbol().equalsIgnoreCase(hugoSymbol)) {
+                                log.warn("Gene hugo symbol does not match, New: {}, Old: {}", hugoSymbol, gene.getHugoSymbol());
+                            }
+                            geneService.delete(gene.getId());
+                            log.info("Deleted gene {} {}", entrezGeneId, hugoSymbol);
+                        }
+                    } else {
+                        log.error("Gene that been removed does not have an entrez gene id {}", line);
+                    }
+                }
+            }
+        }
+    }
+
+    private List<String> findGeneUpdateSectionLines(List<String> lines, String sectionName) {
+        List<String> section = findSectionByCharacter(lines, "# " + sectionName);
+        if (section.size() > 0) {
+            section = findSectionByCharacter(section, "```");
+        }
+        return section;
+    }
+
+    private List<String> findSectionByCharacter(List<String> lines, String characters) {
+        int start = -1, end = -1;
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            if (line.startsWith(characters)) {
+                if (start == -1) start = i + 1; else end = i - 1;
+            }
+        }
+
+        if (start != -1 && start <= end) {
+            return lines.subList(start, end);
+        } else {
+            return new ArrayList<>();
+        }
     }
 
     private List<String[]> getGenePanels() {

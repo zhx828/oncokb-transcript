@@ -108,21 +108,14 @@ public class MetaImporter {
     private NciThesaurusService nciThesaurusService;
 
     @Autowired
-    private CoreImporter coreImporter;
+    private CurationDataService curationDataService;
 
-    private final ApplicationProperties applicationProperties;
+    @Autowired
+    private CoreImporter coreImporter;
 
     private final Logger log = LoggerFactory.getLogger(MetaImporter.class);
 
-    final String DATA_DIRECTORY;
-    final String META_DATA_FOLDER_PATH;
-
-    public MetaImporter(ApplicationProperties applicationProperties) {
-        this.applicationProperties = applicationProperties;
-
-        DATA_DIRECTORY = applicationProperties.getOncokbDataRepoDir() + "/curation";
-        META_DATA_FOLDER_PATH = DATA_DIRECTORY + "/meta";
-    }
+    public MetaImporter(ApplicationProperties applicationProperties) {}
 
     public void generalImport() throws ApiException, IOException {
         log.info("Importing flag...");
@@ -177,7 +170,7 @@ public class MetaImporter {
     }
 
     private void importFlag() throws IOException {
-        List<List<String>> flagLines = parseTsvMetaFile("flag.tsv");
+        List<List<String>> flagLines = curationDataService.parseTsvMetaFile("flag.tsv");
         flagLines.forEach(flagLine -> {
             Flag flagEntity = new Flag();
             String type = flagLine.get(1);
@@ -193,7 +186,7 @@ public class MetaImporter {
     }
 
     private void importFdaSubmissionType() throws IOException {
-        List<List<String>> lines = parseTsvMetaFile("fda_submission_type.tsv");
+        List<List<String>> lines = curationDataService.parseTsvMetaFile("fda_submission_type.tsv");
         lines.forEach(line -> {
             FdaSubmissionType fdaSubmissionType = new FdaSubmissionType();
             String type = line.get(1);
@@ -209,7 +202,7 @@ public class MetaImporter {
     }
 
     private void importGene() throws IOException {
-        List<List<String>> lines = parseTsvMetaFile("gene_10_2023.tsv");
+        List<List<String>> lines = curationDataService.parseTsvMetaFile("gene-info-Apr-11-2023.txt");
         for (int i = 0; i < lines.size(); i++) {
             List<String> line = lines.get(i);
             Integer entrezGeneId = Integer.parseInt(line.get(0));
@@ -254,7 +247,7 @@ public class MetaImporter {
     }
 
     private void importGenePanelFlag() throws IOException {
-        List<List<String>> lines = parseTsvMetaFile("gene_panel_flag.tsv");
+        List<List<String>> lines = curationDataService.parseTsvMetaFile("gene_panel_flag.tsv");
         lines.forEach(line -> {
             if (StringUtils.isNotEmpty(line.get(2))) {
                 Integer entrezGeneId = Integer.parseInt(line.get(0));
@@ -269,7 +262,7 @@ public class MetaImporter {
     }
 
     private void importSeqRegion() throws IOException {
-        List<List<String>> lines = parseTsvMetaFile("seq_region.tsv");
+        List<List<String>> lines = curationDataService.parseTsvMetaFile("seq_region.tsv");
         lines.forEach(line -> {
             SeqRegion seqRegion = new SeqRegion();
             seqRegion.setName(line.get(1));
@@ -280,14 +273,14 @@ public class MetaImporter {
     }
 
     private void importEnsemblGene() throws IOException {
-        List<List<String>> lines = parseTsvMetaFile("ensembl_gene.tsv");
+        List<List<String>> lines = curationDataService.parseTsvMetaFile("ensembl_gene.tsv");
         for (int i = 0; i < lines.size(); i++) {
             List<String> line = lines.get(i);
             EnsemblGene ensemblGene = new EnsemblGene();
             Optional<Gene> geneOptional = geneService.findGeneByEntrezGeneId(Integer.parseInt(line.get(0)));
             if (geneOptional.isEmpty()) {
                 log.error("Can't find gene {}", line.get(0));
-                return;
+                continue;
             }
             ensemblGene.setGene(geneOptional.get());
             ensemblGene.setReferenceGenome(ReferenceGenome.valueOf(line.get(2)));
@@ -306,7 +299,7 @@ public class MetaImporter {
     }
 
     private void importGenomeFragment() throws IOException {
-        List<List<String>> lines = parseTsvMetaFile("genome_fragment.tsv");
+        List<List<String>> lines = curationDataService.parseTsvMetaFile("genome_fragment.tsv");
         for (int i = 0; i < lines.size(); i++) {
             List<String> line = lines.get(i);
             GenomeFragment genomeFragment = new GenomeFragment();
@@ -316,7 +309,7 @@ public class MetaImporter {
             );
             if (ensemblGeneOptional.isEmpty()) {
                 log.error("Cannot find ensembl gene {} {}", line.get(3), ReferenceGenome.valueOf(line.get(2)));
-                return;
+                continue;
             }
             Optional<TranscriptDTO> transcriptOptional = transcriptService.findByEnsemblGeneAndEnsemblTranscriptId(
                 ensemblGeneOptional.get(),
@@ -324,7 +317,7 @@ public class MetaImporter {
             );
             if (transcriptOptional.isEmpty()) {
                 log.error("Can't find transcript {}", line.get(4));
-                return;
+                continue;
             }
             genomeFragment.setTranscript(transcriptMapper.toEntity(transcriptOptional.get()));
             genomeFragment.setType(GenomeFragmentType.valueOf(line.get(5)));
@@ -341,14 +334,14 @@ public class MetaImporter {
     }
 
     private void importTranscript() throws IOException {
-        List<List<String>> lines = parseTsvMetaFile("transcript.tsv");
+        List<List<String>> lines = curationDataService.parseTsvMetaFile("transcript.tsv");
         for (int i = 0; i < lines.size(); i++) {
             List<String> line = lines.get(i);
             Transcript transcript = new Transcript();
             Optional<Gene> geneOptional = geneService.findGeneByEntrezGeneId(Integer.parseInt(line.get(0)));
             if (geneOptional.isEmpty()) {
                 log.error("Can't find gene {}", line.get(0));
-                return;
+                continue;
             }
             transcript.setGene(geneOptional.get());
             Optional<EnsemblGene> ensemblGeneOptional = ensemblGeneService.findByEnsemblGeneIdAndReferenceGenome(
@@ -357,7 +350,7 @@ public class MetaImporter {
             );
             if (ensemblGeneOptional.isEmpty()) {
                 log.error("Error find ensembl gene {} {}", line.get(2), line.get(3));
-                return;
+                continue;
             }
             transcript.setReferenceGenome(ReferenceGenome.valueOf(line.get(2)));
             transcript.setEnsemblGene(ensemblGeneOptional.get());
@@ -375,7 +368,7 @@ public class MetaImporter {
     }
 
     private void importTranscriptFlag() throws IOException {
-        List<List<String>> lines = parseTsvMetaFile("transcript_flag.tsv");
+        List<List<String>> lines = curationDataService.parseTsvMetaFile("transcript_flag.tsv");
         for (int i = 0; i < lines.size(); i++) {
             List<String> line = lines.get(i);
             if (StringUtils.isNotEmpty(line.get(5))) {
@@ -389,7 +382,7 @@ public class MetaImporter {
                 );
                 if (transcriptOptional.isEmpty()) {
                     log.error("Error find transcript {} {}", referenceGenome, transcriptId);
-                    return;
+                    continue;
                 }
                 Optional<Flag> flagOptional = flagService.findByTypeAndFlag(FlagType.TRANSCRIPT, flag);
                 transcriptOptional.get().getFlags().add(flagOptional.get());
@@ -402,7 +395,7 @@ public class MetaImporter {
     }
 
     private void importSequence() throws IOException {
-        List<List<String>> lines = parseTsvMetaFile("sequence.tsv");
+        List<List<String>> lines = curationDataService.parseTsvMetaFile("sequence.tsv");
         for (int i = 0; i < lines.size(); i++) {
             List<String> line = lines.get(i);
             Sequence sequence = new Sequence();
@@ -412,7 +405,7 @@ public class MetaImporter {
             );
             if (ensemblGeneOptional.isEmpty()) {
                 log.error("Error find ensembl gene {} {}", line.get(2), line.get(3));
-                return;
+                continue;
             }
             Optional<TranscriptDTO> transcriptOptional = transcriptService.findByEnsemblGeneAndEnsemblTranscriptId(
                 ensemblGeneOptional.get(),
@@ -420,7 +413,7 @@ public class MetaImporter {
             );
             if (transcriptOptional.isEmpty()) {
                 log.error("Error find transcript {}", line.get(4));
-                return;
+                continue;
             }
             sequence.setTranscript(transcriptMapper.toEntity(transcriptOptional.get()));
             sequence.setSequenceType(SequenceType.valueOf(line.get(5)));
@@ -485,11 +478,11 @@ public class MetaImporter {
     }
 
     public void importNcit() throws IOException {
-        List<List<String>> lines = parseDelimitedFile(DATA_DIRECTORY + "/ncit/Thesaurus_" + NCIT_VERSION + ".tsv", "\t", true);
+        List<List<String>> lines = parseDelimitedFile(
+            curationDataService.getDataDirectory() + "/ncit/Thesaurus_" + NCIT_VERSION + ".tsv",
+            "\t",
+            true
+        );
         saveAllNcitData(lines);
-    }
-
-    private List<List<String>> parseTsvMetaFile(String fileName) throws IOException {
-        return parseDelimitedFile(META_DATA_FOLDER_PATH + "/" + fileName, "\t", true);
     }
 }
