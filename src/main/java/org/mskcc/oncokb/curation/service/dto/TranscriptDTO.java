@@ -5,10 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import javax.validation.constraints.*;
-import org.mskcc.oncokb.curation.domain.EnsemblGene;
-import org.mskcc.oncokb.curation.domain.Flag;
-import org.mskcc.oncokb.curation.domain.Gene;
-import org.mskcc.oncokb.curation.domain.GenomeFragment;
+import org.mskcc.oncokb.curation.domain.*;
 import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
 
 /**
@@ -48,6 +45,8 @@ public class TranscriptDTO implements Serializable {
     private List<GenomeFragment> utrs = new ArrayList<>();
 
     private List<Flag> flags = new ArrayList<>();
+
+    private Sequence proteinSequence;
 
     public Long getId() {
         return id;
@@ -175,6 +174,14 @@ public class TranscriptDTO implements Serializable {
 
     public void setFlags(List<Flag> flags) {
         this.flags = flags;
+    }
+
+    public Sequence getProteinSequence() {
+        return proteinSequence;
+    }
+
+    public void setProteinSequence(Sequence proteinSequence) {
+        this.proteinSequence = proteinSequence;
     }
 
     @Override

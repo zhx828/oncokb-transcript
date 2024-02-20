@@ -96,11 +96,14 @@ public class Importer {
         //        this.transcriptImporter.importCanonicalEnsemblGenes();
         //        checkOncoKbTranscriptSequenceAcrossRG();
         //        importAlteration();
-        //                this.transcriptImporter.importTranscripts();
+        //                        this.transcriptImporter.importTranscripts();
         //        this.ensemblImporter.importSeqRegion();
-        this.metaImporter.generalImport();
-        firebaseService.importDrugs();
-        cdxImporter.importCdxMain();
+        //                        this.transcriptImporter.importTranscripts();
+        //        this.transcriptImporter.validateEnsemblCanonicalGeneAndTranscript();
+        this.transcriptImporter.checkTranscript();
+        //        this.metaImporter.generalImport();
+        //        firebaseService.importDrugs();
+        //        cdxImporter.importCdxMain();
         //        firebaseService.readGene();
     }
 

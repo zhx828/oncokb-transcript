@@ -271,18 +271,22 @@ public class MainService {
                             true
                         );
                         if (ensemblGeneOptional.isEmpty()) {
-                            log.error("Failed to save the ensembl {} {} {}", referenceGenome, ensemblGene.getGeneId(), entrezGeneId);
+                            log.error("Failed to save the ensembl gene {} {} {}", referenceGenome, entrezGeneId, ensemblGene.getGeneId());
+                        } else {
+                            log.info("Saved new ensembl gene", referenceGenome, entrezGeneId, ensemblGene.getGeneId());
                         }
                     } else {
-                        log.warn("No ensembl gene id available {} {} {}", referenceGenome, entrezGeneId, ensemblGene);
+                        log.warn("No ensembl gene id available {} {} {}", referenceGenome, entrezGeneId, ensemblGene.getHugoSymbol());
                     }
                 } else {
-                    log.error("No canonical ensembl gene for {} {}", referenceGenome, entrezGeneId);
+                    log.error("No canonical ensembl gene found for {} {} in GenomeNexus", referenceGenome, entrezGeneId);
                 }
             } catch (ApiException e) {
                 log.error("Failed to fetch the canonical transcript from GN {} {}", referenceGenome, entrezGeneId);
                 log.error(e.getMessage());
             }
+        } else {
+            log.info("Canonical ensembl gene for {} {} already exists", referenceGenome, entrezGeneId);
         }
     }
 
@@ -328,6 +332,7 @@ public class MainService {
                         referenceGenome,
                         remoteEnsemblGene.getCanonicalTranscript(),
                         geneOptional.get().getEntrezGeneId(),
+                        geneOptional.get().getHugoSymbol(),
                         null,
                         null,
                         false,
@@ -353,6 +358,7 @@ public class MainService {
         @NotNull ReferenceGenome referenceGenome,
         @NotNull String ensemblTranscriptId,
         @NotNull Integer entrezGeneId,
+        @NotNull String hugoSymbol,
         String ensemblProteinId,
         String refSeqId,
         Boolean isCanonical,
@@ -377,15 +383,22 @@ public class MainService {
                 );
             } else {
                 log.error(
-                    "Failed to create ensembl gene {} {} {} {}",
+                    "Failed to create ensembl gene {} {} {} {} {}",
                     referenceGenome,
                     ensemblTranscriptOptional.get().getParent(),
                     entrezGeneId,
+                    hugoSymbol,
                     isCanonical
                 );
             }
         } else {
-            log.error("Failed to find ensembl transcript through Ensembl {} {} {}", referenceGenome, entrezGeneId, ensemblTranscriptId);
+            log.error(
+                "Failed to find ensembl transcript through Ensembl {} {} {} {}",
+                referenceGenome,
+                entrezGeneId,
+                hugoSymbol,
+                ensemblTranscriptId
+            );
         }
         return Optional.empty();
     }
@@ -442,6 +455,8 @@ public class MainService {
         }
 
         TranscriptDTO transcriptDTO = new TranscriptDTO();
+        transcriptDTO.setGene(ensemblGene.getGene());
+        transcriptDTO.setReferenceGenome(ensemblGene.getReferenceGenome());
         transcriptDTO.setEnsemblGene(ensemblGene);
         transcriptDTO.setEnsemblTranscriptId(transcriptId);
         transcriptDTO.setEnsemblProteinId(ensemblProteinId);

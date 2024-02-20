@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.javers.spring.annotation.JaversSpringDataAuditable;
 import org.mskcc.oncokb.curation.domain.EnsemblGene;
+import org.mskcc.oncokb.curation.domain.Gene;
 import org.mskcc.oncokb.curation.domain.Transcript;
 import org.mskcc.oncokb.curation.domain.enumeration.ReferenceGenome;
 import org.springframework.cache.annotation.Cacheable;
@@ -19,6 +20,15 @@ import org.springframework.stereotype.Repository;
 public interface TranscriptRepository extends JpaRepository<Transcript, Long>, JpaSpecificationExecutor<Transcript> {
     @Query("select t from Transcript t join t.ensemblGene eg where eg.referenceGenome= ?1 and t.ensemblTranscriptId=?2")
     Optional<Transcript> findByReferenceGenomeAndEnsemblTranscriptId(ReferenceGenome referenceGenome, String ensemblTranscriptId);
+
+    @Query("select t from Transcript t join t.ensemblGene eg where eg.referenceGenome= ?1 and t.ensemblTranscriptId like ?2%")
+    Optional<Transcript> findByReferenceGenomeAndEnsemblTranscriptIdWithoutSubversion(
+        ReferenceGenome referenceGenome,
+        String ensemblTranscriptId
+    );
+
+    List<Transcript> findByReferenceGenomeAndGene(ReferenceGenome referenceGenome, Gene gene);
+    List<Transcript> findByGene(Gene gene);
 
     @Cacheable(cacheResolver = "transcriptCacheResolver")
     @Query("select distinct t from Transcript t join t.ensemblGene eg where eg.referenceGenome= ?1 and t.ensemblTranscriptId in ?2")

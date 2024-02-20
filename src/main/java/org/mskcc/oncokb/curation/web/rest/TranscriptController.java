@@ -295,6 +295,7 @@ public class TranscriptController {
             ReferenceGenome.valueOf(body.getReferenceGenome()),
             body.getEnsemblTranscriptId(),
             body.getEntrezGeneId(),
+            "",
             null,
             null,
             body.getCanonical(),

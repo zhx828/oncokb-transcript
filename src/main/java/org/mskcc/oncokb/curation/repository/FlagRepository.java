@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.javers.spring.annotation.JaversSpringDataAuditable;
 import org.mskcc.oncokb.curation.domain.Flag;
 import org.springframework.data.jpa.repository.*;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -13,6 +14,9 @@ import org.springframework.stereotype.Repository;
 @JaversSpringDataAuditable
 @Repository
 public interface FlagRepository extends JpaRepository<Flag, Long>, JpaSpecificationExecutor<Flag> {
+    @Query("select flag from Flag flag left join fetch flag.genes where flag.id =:id ")
+    Optional<Flag> findByIdWithEagerRelationships(@Param("id") Long id);
+
     Optional<Flag> findByTypeAndFlag(String type, String flag);
 
     List<Flag> findAllByFlagIn(List<String> flags);

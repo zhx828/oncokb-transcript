@@ -2,6 +2,7 @@ package org.mskcc.oncokb.curation.service;
 
 import static org.mskcc.oncokb.curation.config.Constants.ENSEMBL_POST_THRESHOLD;
 
+import java.sql.Ref;
 import java.util.*;
 import java.util.List;
 import java.util.Optional;
@@ -264,12 +265,53 @@ public class TranscriptService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<TranscriptDTO> findByReferenceGenomeAndEnsemblTranscriptIdWithoutSubversion(
+        ReferenceGenome referenceGenome,
+        String ensembleTranscriptId
+    ) {
+        log.debug("Request to get Sequence : {}", ensembleTranscriptId);
+        Optional<Transcript> transcriptOptional = transcriptRepository.findByReferenceGenomeAndEnsemblTranscriptIdWithoutSubversion(
+            referenceGenome,
+            ensembleTranscriptId
+        );
+        if (transcriptOptional.isPresent()) {
+            return Optional.of(transcriptMapper.toDto(transcriptOptional.get()));
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    @Transactional(readOnly = true)
     public List<TranscriptDTO> findByReferenceGenomeAndEnsemblTranscriptIdIsIn(
         ReferenceGenome referenceGenome,
         List<String> ensemblTranscriptIds
     ) {
         return transcriptRepository
             .findByReferenceGenomeAndEnsemblTranscriptIdIsIn(referenceGenome.name(), ensemblTranscriptIds)
+            .stream()
+            .map(transcriptMapper::toDto)
+            .collect(Collectors.toList());
+    }
+
+    public List<TranscriptDTO> findByReferenceGenomeAndGene(ReferenceGenome referenceGenome, Gene gene) {
+        List<Long> transcripts = transcriptRepository
+            .findByReferenceGenomeAndGene(referenceGenome, gene)
+            .stream()
+            .map(Transcript::getId)
+            .collect(Collectors.toList());
+
+        return transcriptRepository
+            .findAllWithEagerRelationships(transcripts)
+            .stream()
+            .map(transcriptMapper::toDto)
+            .collect(Collectors.toList());
+    }
+
+    public List<TranscriptDTO> findByGene(Gene gene) {
+        List<Long> transcripts = transcriptRepository.findByGene(gene).stream().map(Transcript::getId).collect(Collectors.toList());
+
+        return transcriptRepository
+            .findAllWithEagerRelationships(transcripts)
             .stream()
             .map(transcriptMapper::toDto)
             .collect(Collectors.toList());

@@ -5,9 +5,12 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.mapstruct.*;
 import org.mskcc.oncokb.curation.domain.GenomeFragment;
+import org.mskcc.oncokb.curation.domain.Sequence;
 import org.mskcc.oncokb.curation.domain.Transcript;
 import org.mskcc.oncokb.curation.domain.enumeration.GenomeFragmentType;
+import org.mskcc.oncokb.curation.domain.enumeration.SequenceType;
 import org.mskcc.oncokb.curation.repository.GenomeFragmentRepository;
+import org.mskcc.oncokb.curation.repository.SequenceRepository;
 import org.mskcc.oncokb.curation.service.dto.TranscriptDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -20,11 +23,14 @@ public abstract class TranscriptMapper implements EntityMapper<TranscriptDTO, Tr
     @Autowired
     GenomeFragmentRepository genomeFragmentRepository;
 
+    @Autowired
+    SequenceRepository sequenceRepository;
+
     /**
      * @param transcriptDTO
      */
     @AfterMapping
-    protected void updateDTO(@MappingTarget TranscriptDTO transcriptDTO) {
+    protected void updateDTO(Transcript transcript, @MappingTarget TranscriptDTO transcriptDTO) {
         List<GenomeFragment> genomeFragmentList = genomeFragmentRepository.findAllByTranscriptId(transcriptDTO.getId());
 
         Optional<GenomeFragment> geneInfo = genomeFragmentList
@@ -53,6 +59,11 @@ public abstract class TranscriptMapper implements EntityMapper<TranscriptDTO, Tr
             )
             .collect(Collectors.toList());
         transcriptDTO.setUtrs(utrs);
+
+        Optional<Sequence> sequenceOptional = sequenceRepository.findOneByTranscriptAndSequenceType(transcript, SequenceType.PROTEIN);
+        if (sequenceOptional.isPresent()) {
+            transcriptDTO.setProteinSequence(sequenceOptional.get());
+        }
     }
 
     @AfterMapping

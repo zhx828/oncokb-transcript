@@ -101,7 +101,7 @@ public class FlagService {
     @Transactional(readOnly = true)
     public Optional<Flag> findOne(Long id) {
         log.debug("Request to get Flag : {}", id);
-        return flagRepository.findById(id);
+        return flagRepository.findByIdWithEagerRelationships(id);
     }
 
     /**

@@ -9,4 +9,5 @@ public enum TranscriptFlagEnum {
     GN_CANONICAL,
     ONCOKB,
     ENSEMBL_CANONICAL,
+    MSK_IMPACT_CANONICAL,
 }

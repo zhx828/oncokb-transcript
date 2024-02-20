@@ -1,5 +1,6 @@
 package org.mskcc.oncokb.curation.service;
 
+import java.util.List;
 import java.util.Optional;
 import org.mskcc.oncokb.curation.domain.Sequence;
 import org.mskcc.oncokb.curation.domain.Transcript;
@@ -73,6 +74,11 @@ public class SequenceService {
     public Page<Sequence> findAll(Pageable pageable) {
         log.debug("Request to get all Sequences");
         return sequenceRepository.findAll(pageable);
+    }
+
+    public List<Sequence> findAllByTranscriptIn(List<Transcript> transcripts) {
+        log.debug("Request to get all Sequences");
+        return sequenceRepository.findAllByTranscriptIn(transcripts);
     }
 
     /**
