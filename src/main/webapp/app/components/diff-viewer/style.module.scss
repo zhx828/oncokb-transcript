@@ -1,0 +1,7 @@
+@import '~bootstrap/scss/_functions.scss';
+@import '~bootstrap/scss/_variables.scss';
+
+.diff {
+  padding: $input-padding-y $input-padding-x;
+  border: $input-border-width solid transparent;
+}

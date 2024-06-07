@@ -21,6 +21,7 @@ import _ from 'lodash';
 import { CollapsibleColorProps, CollapsibleDisplayProps } from './BaseCollapsible';
 import { getReviewInfo } from 'app/shared/util/firebase/firebase-utils';
 import { notifyError } from 'app/oncokb-commons/components/util/NotificationUtils';
+import DiffViewer from 'app/components/diff-viewer/DiffViewer';
 
 export enum ReviewType {
   CREATE,
@@ -209,28 +210,18 @@ export const ReviewCollapsible = (props: IReviewCollapsibleProps) => {
       );
     }
     if (reviewAction === ReviewAction.UPDATE || reviewAction === ReviewAction.NAME_CHANGE) {
-      let oldValue = reviewLevel.historyData.oldState as string;
-      let newValue = reviewLevel.historyData.newState as string;
-      if (!isUnderCreationOrDeletion && oldValue !== '' && newValue !== '') {
-        oldValue = oldValue?.replace(/\.\s+/g, '.\n');
-        newValue = newValue?.replace(/\.\s+/g, '.\n');
-      }
+      const oldValue = reviewLevel.historyData.oldState as string;
+      const newValue = reviewLevel.historyData.newState as string;
+      // if (!isUnderCreationOrDeletion && oldValue !== '' && newValue !== '') {
+      //   oldValue = oldValue?.replace(/\.\s+/g, '.\n');
+      //   newValue = newValue?.replace(/\.\s+/g, '.\n');
+      // }
       return (
-        <div className="mb-2">
-          <ReactDiffViewer
-            styles={REACT_DIFF_VIEWER_STYLES}
-            showDiffOnly
-            extraLinesSurroundingDiff={0}
-            oldValue={oldValue}
-            newValue={newValue}
-            compareMethod={reviewLevel?.reviewInfo.diffMethod || DiffMethod.WORDS}
-            splitView={props.splitView ? reviewLevel.reviewInfo.review.lastReviewed && reviewLevel.currentVal : false}
-            hideLineNumbers
-            renderContent={source => {
-              return <TextWithRefs content={source} />;
-            }}
-          />
-        </div>
+        <>
+          <div className="mb-2">
+            <DiffViewer new={newValue} old={oldValue} />
+          </div>
+        </>
       );
     }
   };
