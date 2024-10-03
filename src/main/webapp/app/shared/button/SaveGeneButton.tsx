@@ -5,19 +5,18 @@ import React, { useCallback, useState } from 'react';
 import { ButtonProps } from 'reactstrap';
 import { AsyncSaveButton } from './AsyncSaveButton';
 import { notifyError, notifySuccess } from 'app/oncokb-commons/components/util/NotificationUtils';
-import { useDrugListRef } from '../util/utils';
 
 type ISaveGeneButtonProps = StoreProps & {
   hugoSymbol?: string;
+  isGermline?: boolean;
 } & ButtonProps &
   Omit<React.HTMLAttributes<HTMLButtonElement>, 'onClick' | 'disabled'>;
 
-function SaveGeneButton({ hugoSymbol, firebaseGeneService, ...buttonProps }: ISaveGeneButtonProps) {
+function SaveGeneButton({ hugoSymbol, firebaseGeneService, isGermline = false, ...buttonProps }: ISaveGeneButtonProps) {
   const [isSavePending, setIsSavePending] = useState(false);
   const onClickHandler = useCallback(async () => {
     setIsSavePending(true);
     try {
-      const isGermline = false;
       if (hugoSymbol === undefined) {
         await firebaseGeneService?.saveAllGenes(isGermline);
         notifySuccess('All genes saved!');
