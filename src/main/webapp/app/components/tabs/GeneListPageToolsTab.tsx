@@ -65,10 +65,10 @@ function GeneListPageToolsTab({ metaData, isDev, createGene, isGermline }: IGene
           </div>
         </Col>
       </Row>
-      {!isGermline && isDev && (
+      {isDev && (
         <Row className="pt-3 border-top">
           <div>
-            <SaveGeneButton />
+            <SaveGeneButton isGermline={isGermline} />
           </div>
         </Row>
       )}
