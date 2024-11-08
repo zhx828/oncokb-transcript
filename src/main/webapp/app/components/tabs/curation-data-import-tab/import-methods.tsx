@@ -282,7 +282,7 @@ export const saveMutation = async (
         }
       }
       mutation.mutation_effect.pathogenic = data.pathogenicity as PATHOGENICITY;
-      mutation.mutation_effect.pathogenic_review = new Review(authStore.fullName, '');
+      mutation.mutation_effect.pathogenic_review = new Review(authStore.fullName);
       mutationImpactStatusUpdated = true;
     } else {
       const data = dataRow.data;
@@ -293,7 +293,7 @@ export const saveMutation = async (
         }
       }
       mutation.mutation_effect.oncogenic = data.oncogenicity as FIREBASE_ONCOGENICITY;
-      mutation.mutation_effect.oncogenic_review = new Review(authStore.fullName, '');
+      mutation.mutation_effect.oncogenic_review = new Review(authStore.fullName);
       mutationImpactStatusUpdated = true;
     }
 
@@ -319,20 +319,13 @@ export const saveMutation = async (
     }
 
     try {
-      await firebaseGeneService
-        .addMutation(`${getFirebaseGenePath(isGermline, hugoSymbol)}/mutations`, mutation, isGermline, mutIsVus, dataRow.data.description)
-        .then(async () => {
-          if (mutationImpactStatusUpdated) {
-            let uuid: string;
-            if (isGermline) {
-              uuid = mutation.mutation_effect.pathogenic_uuid;
-            } else {
-              uuid = mutation.mutation_effect.oncogenic_uuid;
-            }
-            // I can't use updateReviewableContent here due to lacking of the firebase path
-            await firebaseMetaService.updateMeta(hugoSymbol, uuid, true, isGermline);
-          }
-        });
+      await firebaseGeneService.addMutation(
+        `${getFirebaseGenePath(isGermline, hugoSymbol)}/mutations`,
+        mutation,
+        isGermline,
+        mutIsVus,
+        dataRow.data.description,
+      );
       return {
         status: 'complete',
         message: '',

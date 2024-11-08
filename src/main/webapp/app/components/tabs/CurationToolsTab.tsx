@@ -229,7 +229,7 @@ export function CurationToolsTab({
             <Button className="me-2" outline color="danger" onClick={() => setReleaseGeneClicked(clicked => !clicked)}>
               Cancel
             </Button>
-            <Button className="me-2" color="primary" disabled={confirmButtonDisabled} onClick={handleConfirmClick}>
+            <Button className="me-2" color="primary" disabled={false} onClick={handleConfirmClick}>
               Confirm
             </Button>
           </div>

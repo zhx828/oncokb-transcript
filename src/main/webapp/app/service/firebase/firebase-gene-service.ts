@@ -432,7 +432,7 @@ export class FirebaseGeneService {
   ) => {
     const { hugoSymbol } = parseFirebaseGenePath(mutationsPath) ?? {};
     const name = this.authStore.fullName;
-    newMutation.name_review = new Review(name, undefined, true, undefined);
+    newMutation.name_review = new Review(name, undefined, false, undefined);
     if (isPromotedToMutation) {
       newMutation.name_review.promotedToMutation = true;
     }
@@ -444,10 +444,10 @@ export class FirebaseGeneService {
     if (hugoSymbol !== undefined) {
       await this.firebaseRepository.pushToArray(mutationsPath, [newMutation]).then(() => {
         this.firebaseMetaService.updateGeneMetaContent(hugoSymbol, false);
-        this.firebaseMetaService.updateGeneReviewUuid(hugoSymbol, newMutation.name_uuid, true, isGermline);
-        if (mutationEffectDescription) {
-          this.firebaseMetaService.updateGeneReviewUuid(hugoSymbol, newMutation.mutation_effect.description_uuid, true, isGermline);
-        }
+        // this.firebaseMetaService.updateGeneReviewUuid(hugoSymbol, newMutation.name_uuid, true, isGermline);
+        // if (mutationEffectDescription) {
+        //   this.firebaseMetaService.updateGeneReviewUuid(hugoSymbol, newMutation.mutation_effect.description_uuid, true, isGermline);
+        // }
       });
     }
 
@@ -530,7 +530,7 @@ export class FirebaseGeneService {
     newGenomicIndicator.name = name;
     if (toReview) {
       newGenomicIndicator.name_review = _.cloneDeep(newReview);
-      newGenomicIndicator.name_review.added = true;
+      // newGenomicIndicator.name_review.added = true;
       uuidsToReview.push(newGenomicIndicator.name_uuid);
     }
     if (description) {
